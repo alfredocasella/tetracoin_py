@@ -1,3 +1,19 @@
+# TetraCoin - Pygame Game
+
+Un gioco puzzle in stile Tetris realizzato con Pygame. Contiene 300+ livelli generati proceduralmente.
+
+## Build Android
+
+Questo progetto utilizza **GitHub Actions** per compilare automaticamente l'APK Android.
+
+### Come scaricare l'APK compilato:
+
+1. Vai su: https://github.com/alfredocasella/tetracoin_py/actions
+2. Seleziona l'ultima build completata
+3. Scarica l'artifact `tetracoin-debug.apk`
+
+---
+
 # Guideline
 
 1. Copia:
