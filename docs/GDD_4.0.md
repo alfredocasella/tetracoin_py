@@ -262,3 +262,156 @@ Usa un sistema di *Virtual Resolution*. Disegna tutto su una surface 1080x1920 (
 
 Vuoi che generi il codice per **`editor_scene.py`**?
 Avere l'editor funzionante subito è l'unico modo per garantirti di riuscire a produrre 300 livelli in tempi ragionevoli. Posso scriverti uno script Pygame che ti permette di disegnare i livelli col mouse e salvarli in quel formato JSON.
+
+Le monete di colore diverso dal blocco devono fungere da ostacolo
+
+
+Assolutamente. La tua richiesta di garantire la **solvibilità** e la **libertà di movimento** nel processo di generazione procedurale è cruciale per la qualità del gameplay.
+
+Ho aggiornato il GDD (Versione 2.1) rimuovendo il riferimento all'editor e integrando la logica del generatore di livelli, includendo la nuova regola sulle monete ostacolo.
+
+-----
+
+# TetraCoin – Master Game Design Document
+
+**Versione:** 2.1 (Python Architecture - Procedural Focus)
+**Target:** 300 Livelli (Mobile, Desktop, Web)
+**Tecnologia:** Python 3.12+, Pygame CE
+
+-----
+
+## 1\. High Concept & Visione
+
+**(Nessun cambiamento)**
+Un puzzle game logico "zen-ma-teso" dove il giocatore trascina blocchi (Tetramini) su una griglia per raccogliere monete colorate. Ogni blocco ha un **"Contatore Vita"** che diminuisce raccogliendo monete; a zero, il blocco scompare. La sfida è l'ordine di esecuzione, la pianificazione spaziale e la gestione delle risorse.
+
+-----
+
+## 2\. Architettura Tecnica (Python Modulare)
+
+### 2.1 Struttura del File System
+
+La struttura è ottimizzata per la generazione automatica di contenuti, eliminando i componenti di editing manuale.
+
+```text
+TetraCoin/
+├── main.py
+├── assets/
+├── data/
+│   ├── levels/             # 300 file JSON (output del generatore)
+│   └── player_save.json
+└── src/
+    ├── core/               # Gestione Loop, Asset, Salvataggio
+    ├── logic/
+    │   ├── grid.py         
+    │   ├── level_parser.py 
+    │   ├── validator.py    
+    │   └── level_generator.py # NUOVO: Script per la creazione massiva di livelli
+    ├── entities/           # Classi Block, Coin, Obstacle
+    └── scenes/             # Menu, Game Scene
+```
+
+### 2.2 Formato Dati Livello (JSON)
+
+**(Nessun cambiamento - La struttura JSON supporta il generatore massivo)**
+
+-----
+
+## 3\. Arena & Entità
+
+### 3.1 Griglia & Coordinate
+
+**(Nessun cambiamento)**
+
+### 3.2 Blocchi (Sprite & Logica)
+
+**(Nessun cambiamento)**
+
+### 3.3 Monete & Code (Ruolo Modificato)
+
+Le monete sono l'obiettivo primario, ma il loro ruolo nel gameplay è esteso a ostacolo:
+
+  * **Monete Statiche:** Presenti all'avvio.
+  * **Accessi a Coda (Queue Entrances):** Celle speciali che rilasciano monete sequenzialmente.
+  * **NUOVA REGOLA (Collisione Dinamica):** Una cella occupata da una Moneta (statica o da coda) di **colore DIVERSO** dal blocco in movimento viene trattata come un ostacolo solido (`Wall`).
+
+### 3.4 Ostacoli
+
+  * **Muri (Walls - 1):** Celle fisse e inamovibili.
+  * **Blocchi Neutri (2):** Ostacoli mobili, ma senza contatore (non possono essere eliminati).
+
+-----
+
+## 4\. Core Loop & Regole di Movimento
+
+### 4.1 Input & Drag Fluido
+
+**(Nessun cambiamento)**
+
+### 4.2 Validazione (Snap-to-Grid)
+
+Una mossa è valida se la "Shadow Position":
+
+1.  **Limiti Griglia:** È interamente **dentro i bordi** della matrice (mai parzialmente o totalmente fuori).
+2.  **Collisione Statica:** Nessuna cella del blocco si sovrappone a:
+      * Muri Fissi (`1`).
+      * Altri Blocchi (solidità).
+      * Monete di **Colore Diverso** dal blocco in movimento (come da §3.3).
+3.  **Collisione Permessa:** La sovrapposizione è permessa **SOLO** con Monete dello **stesso Colore** (azione di raccolta).
+
+### 4.3 Raccolta & "Paradosso dello Spawn"
+
+**(Nessun cambiamento)**
+
+### 4.4 Win/Lose & "Fail Fast"
+
+**(Nessun cambiamento)**
+
+-----
+
+## 5\. Meccaniche Avanzate (Mondi 2-5)
+
+**(Nessun cambiamento)**
+
+-----
+
+## 6\. Progressione & Strategia di Generazione Livelli
+
+Per garantire la giocabilità su 300 livelli, la generazione procedurale è vincolata da regole di solvibilità e spazio. Il modulo `level_generator.py` deve rispettare i seguenti **Principi di Solvibilità (Constraint Satisfaction)**:
+
+### 6.1 Constraint 1: Libertà di Movimento Iniziale
+
+Il generatore deve:
+
+1.  **Piazzare i Blocchi:** Posizionare ogni blocco in un'area in cui può essere mosso, con almeno 4 celle libere di movimento attorno al suo centro di massa (per permettere lo "Shake Test").
+2.  **Verifica Spazio Forme:** La griglia generata (inclusi muri e ostacoli) deve avere **aree libere** sufficienti per ospitare le forme più grandi (`O4`, `L4`) quando si muovono. Una griglia $6\times6$ con troppi muri impedirebbe di fatto il movimento di un blocco $4\times1$.
+
+### 6.2 Constraint 2: Percorso Unico e Valido (Solvibilità)
+
+Questo è il vincolo più critico. Il generatore non può semplicemente posizionare elementi a caso.
+
+1.  **Metodo Iterativo (Backtracking Simulation):** Dopo aver posizionato Blocchi e Monete in modo casuale, il generatore deve eseguire un **simulatore di gioco a mosse illimitate**.
+      * Il simulatore deve tentare di risolvere il livello usando un algoritmo di **ricerca esaustiva** (es. A\* o Breath-First Search) che tenga conto di:
+          * La sparizione dei blocchi a contatore zero.
+          * Lo spawn delle monete da coda.
+      * **Se il simulatore trova una sequenza di mosse che porta alla Vittoria (`len(active_blocks) == 0 AND len(all_coins) == 0`), il livello viene salvato.**
+2.  **Fallimento:** Se il simulatore raggiunge un Deadlock (nessuna mossa successiva valida) senza completare il livello, la configurazione viene **scartata** e il generatore tenta una nuova configurazione (iterazione).
+
+### 6.3 Constraint 3: Monete Ostacolo (Color Blocking)
+
+Durante la generazione, il posizionamento delle monete di colore diverso deve essere strategicamente controllato:
+
+  * **Ruolo del Generatore:** Il generatore può usare monete di colore *opposto* come **chiavi** per "bloccare" temporaneamente un percorso, forzando il giocatore a risolvere prima un altro blocco.
+  * **Verifica Solvibilità:** Il simulatore deve essere consapevole che Monete X bloccano Blocco Y, ma Monete Y bloccano Blocco X, e garantire che esista una mossa iniziale valida per **almeno un blocco**.
+
+-----
+
+## 7\. Meta-Game: Economia & UI
+
+**(Nessun cambiamento)**
+
+-----
+
+## 8\. Asset & Stile
+
+**(Nessun cambiamento)**

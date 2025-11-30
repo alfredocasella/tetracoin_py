@@ -516,21 +516,14 @@ class Game:
                 color = block.block_data['color']
                 coins_required_per_color[color] = coins_required_per_color.get(color, 0) + block.counter
             
-            # Count REMAINING coins on board (not collected yet)
-            coins_remaining_on_board = {}
-            for coin in self.coin_sprites:
-                color = coin.coin_data['color']
-                coins_remaining_on_board[color] = coins_remaining_on_board.get(color, 0) + 1
-            
-            # Also count coins still in queues (not yet spawned)
+            # Also count coins still in queues (they will be required)
             for queue in self.coin_queues:
                 for color in queue['items']:
-                    coins_remaining_on_board[color] = coins_remaining_on_board.get(color, 0) + 1
+                    coins_required_per_color[color] = coins_required_per_color.get(color, 0) + 1
             
-            # Build objectives dict - show collected vs required
+            # Build objectives dict
             for color in COLORS:
                 required = coins_required_per_color.get(color, 0)
-                remaining = coins_remaining_on_board.get(color, 0)
                 collected = self.coins_collected_per_color.get(color, 0)
                 
                 # Only show colors that have requirements

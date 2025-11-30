@@ -164,23 +164,15 @@ class UI:
         screen.blit(title_text, (SCREEN_WIDTH // 2 - title_text.get_width() // 2, panel_y + 10))
         
         if objectives:
-            # Draw pills for each color - REDUCED SIZE for mobile
+            # Draw pills for each color (200x72px per GDD)
             start_x = 20
-            pill_width = 150  # Reduced from 200
-            pill_height = 56  # Reduced from 72
-            gap = 12  # Reduced from 16
+            pill_width = 200
+            pill_height = 72
+            gap = 16
             
             # Center pills horizontally
             total_width = len(objectives) * pill_width + (len(objectives) - 1) * gap
             start_x = (SCREEN_WIDTH - total_width) // 2
-            
-            # If pills don't fit, use smaller size or 2 rows
-            if total_width > SCREEN_WIDTH - 40:
-                pill_width = 130
-                pill_height = 50
-                gap = 8
-                total_width = len(objectives) * pill_width + (len(objectives) - 1) * gap
-                start_x = (SCREEN_WIDTH - total_width) // 2
             
             # Color-specific pastel backgrounds per GDD
             pastel_colors = {
@@ -198,42 +190,41 @@ class UI:
                 pastel_bg = pastel_colors.get(color_name, COLOR_WHITE)
                 
                 x = start_x + i * (pill_width + gap)
-                y = panel_y + 60  # Adjusted for new panel height
+                y = panel_y + 50
                 
-                # Pill bg (reduced size, proportional radius)
+                # Pill bg (200x72px, raggio 36px per GDD)
                 pill_rect = pygame.Rect(x, y, pill_width, pill_height)
-                border_radius = pill_height // 2  # Proportional radius
-                pygame.draw.rect(screen, pastel_bg, pill_rect, border_radius=border_radius)
-                pygame.draw.rect(screen, color_rgb, pill_rect, 2, border_radius=border_radius)
+                pygame.draw.rect(screen, pastel_bg, pill_rect, border_radius=36)
+                pygame.draw.rect(screen, color_rgb, pill_rect, 2, border_radius=36)
                 
-                # Coin icon (scaled down)
-                icon_size = 28  # Reduced from 36
-                icon_x = x + 16  # Adjusted
+                # Coin icon (32-40px per GDD)
+                icon_size = 36
+                icon_x = x + 20
                 icon_y = y + pill_height // 2
                 pygame.draw.circle(screen, color_rgb, (icon_x, icon_y), icon_size // 2)
                 # Inner highlight
-                pygame.draw.circle(screen, pastel_bg, (icon_x - 3, icon_y - 3), icon_size // 4)
+                pygame.draw.circle(screen, pastel_bg, (icon_x - 4, icon_y - 4), icon_size // 4)
                 
-                # Text "collected / required" (smaller font)
+                # Text "x collected / required" (Bold, 28px per GDD)
                 text = f"{collected} / {required}"
-                text_surf = self.font_tiny.render(text, True, TEXT_COLOR)  # Use tiny font
-                text_rect = text_surf.get_rect(center=(pill_rect.centerx + 10, pill_rect.centery))
+                text_surf = self.font_small.render(text, True, TEXT_COLOR)
+                text_rect = text_surf.get_rect(center=(pill_rect.centerx, pill_rect.centery))
                 screen.blit(text_surf, text_rect)
                 
-                # Checkmark if complete (scaled)
+                # Checkmark if complete (right side)
                 if collected >= required:
-                    check_x = x + pill_width - 16  # Adjusted
-                    check_y = y + 16  # Adjusted
+                    check_x = x + pill_width - 20
+                    check_y = y + 20
                     # Green checkmark circle
-                    pygame.draw.circle(screen, COLOR_SUCCESS_GREEN, (check_x, check_y), 10)  # Smaller
+                    pygame.draw.circle(screen, COLOR_SUCCESS_GREEN, (check_x, check_y), 12)
                     # White checkmark
-                    pygame.draw.line(screen, COLOR_WHITE, (check_x - 3, check_y), (check_x - 1, check_y + 2), 2)
-                    pygame.draw.line(screen, COLOR_WHITE, (check_x - 1, check_y + 2), (check_x + 3, check_y - 2), 2)
+                    pygame.draw.line(screen, COLOR_WHITE, (check_x - 4, check_y), (check_x - 1, check_y + 3), 3)
+                    pygame.draw.line(screen, COLOR_WHITE, (check_x - 1, check_y + 3), (check_x + 4, check_y - 2), 3)
                 else:
                     # Incomplete: gray circle outline
-                    check_x = x + pill_width - 16
-                    check_y = y + 16
-                    pygame.draw.circle(screen, GRID_LINE_COLOR, (check_x, check_y), 10, 2)  # Smaller
+                    check_x = x + pill_width - 20
+                    check_y = y + 20
+                    pygame.draw.circle(screen, GRID_LINE_COLOR, (check_x, check_y), 12, 2)
 
     def draw_bottom_bar(self, screen):
         bar_y = SCREEN_HEIGHT - BOTTOM_BAR_HEIGHT

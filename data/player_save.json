@@ -1,12 +1,12 @@
 {
   "player": {
     "name": "Player",
-    "total_stars": 26,
-    "tetra_gold": 290,
+    "total_stars": 42,
+    "tetra_gold": 500,
     "current_world": 1,
-    "unlocked_levels": 12,
-    "total_moves": 989,
-    "total_time_played": 709.3180000000003
+    "unlocked_levels": 25,
+    "total_moves": 1422,
+    "total_time_played": 914.2780000000005
   },
   "levels": {
     "1": {
@@ -14,76 +14,167 @@
       "stars": 3,
       "best_moves": 0,
       "best_time": 0.0,
-      "attempts": 28
+      "attempts": 29
     },
     "2": {
       "completed": true,
       "stars": 3,
       "best_moves": 4,
       "best_time": 3.144,
-      "attempts": 20
+      "attempts": 21
     },
     "3": {
       "completed": true,
       "stars": 3,
       "best_moves": 8,
       "best_time": 2.905,
-      "attempts": 19
+      "attempts": 20
     },
     "4": {
       "completed": true,
       "stars": 3,
       "best_moves": 3,
       "best_time": 1.558,
-      "attempts": 15
+      "attempts": 16
     },
     "5": {
       "completed": true,
       "stars": 3,
       "best_moves": 2,
       "best_time": 2.013,
-      "attempts": 8
+      "attempts": 9
     },
     "6": {
       "completed": true,
       "stars": 2,
       "best_moves": 4,
       "best_time": 2.647,
-      "attempts": 5
+      "attempts": 6
     },
     "7": {
       "completed": true,
       "stars": 3,
       "best_moves": 2,
       "best_time": 2.304,
-      "attempts": 5
+      "attempts": 6
     },
     "8": {
       "completed": true,
       "stars": 1,
       "best_moves": 8,
       "best_time": 2.886,
-      "attempts": 4
+      "attempts": 5
     },
     "9": {
       "completed": true,
       "stars": 3,
       "best_moves": 2,
       "best_time": 2.056,
-      "attempts": 3
+      "attempts": 4
     },
     "10": {
       "completed": true,
       "stars": 2,
       "best_moves": 3,
       "best_time": 3.02,
-      "attempts": 3
+      "attempts": 4
     },
     "11": {
       "completed": true,
-      "stars": 0,
-      "best_moves": 75,
-      "best_time": 37.814,
+      "stars": 1,
+      "best_moves": 16,
+      "best_time": 7.579,
+      "attempts": 2
+    },
+    "12": {
+      "completed": true,
+      "stars": 1,
+      "best_moves": 13,
+      "best_time": 5.599,
+      "attempts": 1
+    },
+    "13": {
+      "completed": true,
+      "stars": 1,
+      "best_moves": 44,
+      "best_time": 19.569,
+      "attempts": 1
+    },
+    "14": {
+      "completed": true,
+      "stars": 2,
+      "best_moves": 12,
+      "best_time": 9.65,
+      "attempts": 1
+    },
+    "15": {
+      "completed": true,
+      "stars": 1,
+      "best_moves": 17,
+      "best_time": 22.686,
+      "attempts": 1
+    },
+    "16": {
+      "completed": true,
+      "stars": 1,
+      "best_moves": 20,
+      "best_time": 6.778,
+      "attempts": 1
+    },
+    "17": {
+      "completed": true,
+      "stars": 1,
+      "best_moves": 13,
+      "best_time": 6.374,
+      "attempts": 1
+    },
+    "18": {
+      "completed": true,
+      "stars": 2,
+      "best_moves": 16,
+      "best_time": 6.07,
+      "attempts": 1
+    },
+    "19": {
+      "completed": true,
+      "stars": 1,
+      "best_moves": 18,
+      "best_time": 6.02,
+      "attempts": 1
+    },
+    "20": {
+      "completed": true,
+      "stars": 1,
+      "best_moves": 24,
+      "best_time": 10.086,
+      "attempts": 1
+    },
+    "21": {
+      "completed": true,
+      "stars": 1,
+      "best_moves": 17,
+      "best_time": 9.105,
+      "attempts": 1
+    },
+    "22": {
+      "completed": true,
+      "stars": 1,
+      "best_moves": 17,
+      "best_time": 6.132,
+      "attempts": 1
+    },
+    "23": {
+      "completed": true,
+      "stars": 1,
+      "best_moves": 19,
+      "best_time": 6.883,
+      "attempts": 1
+    },
+    "24": {
+      "completed": true,
+      "stars": 1,
+      "best_moves": 63,
+      "best_time": 23.016,
       "attempts": 1
     }
   },

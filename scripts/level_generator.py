@@ -122,22 +122,9 @@ def place_reachable_coins(layout, grid_w, grid_h, block_shape, num_coins, occupi
     
     return coins
 
-def can_block_reach_position(block_pos, block_shape, target_pos, layout, grid_w, grid_h, other_blocks, coin_positions=None):
-    """Use BFS to check if a block can reach a target position
-    
-    Args:
-        block_pos: Starting position of block
-        block_shape: Shape of block
-        target_pos: Target position to reach
-        layout: Grid layout
-        grid_w, grid_h: Grid dimensions
-        other_blocks: Set of cells occupied by other blocks
-        coin_positions: Set of cells with coins (coins are obstacles!)
-    """
+def can_block_reach_position(block_pos, block_shape, target_pos, layout, grid_w, grid_h, other_blocks):
+    """Use BFS to check if a block can reach a target position"""
     from collections import deque
-    
-    if coin_positions is None:
-        coin_positions = set()
     
     shape_cells = SHAPE_CELLS.get(block_shape, [(0, 0)])
     start = tuple(block_pos)
@@ -189,13 +176,6 @@ def can_block_reach_position(block_pos, block_shape, target_pos, layout, grid_w,
                 
                 # Check collision with other blocks
                 if (cell_x, cell_y) in other_blocks:
-                    valid_move = False
-                    break
-                
-                # CRITICAL: Check collision with coins (coins are obstacles!)
-                # Exception: the target coin itself is not an obstacle
-                # NOTE: coin_positions includes ALL coins, other_blocks should NOT include coins
-                if (cell_x, cell_y) in coin_positions and (cell_x, cell_y) != target:
                     valid_move = False
                     break
             
@@ -285,13 +265,6 @@ def verify_level_solvable(level_data, fast_mode=False):
             cells.add((pos[0] + dx, pos[1] + dy))
         all_other_blocks[block_id] = cells
     
-    # Collect ALL coin positions (coins are obstacles!)
-    all_coin_positions = set()
-    for coin in coins:
-        coin_pos = get_coin_pos(coin)
-        if coin_pos is not None:
-            all_coin_positions.add(tuple(coin_pos))
-    
     # Check each block - simplified: just check if it can reach at least one coin
     # (full check for all coins is too slow)
     for i, block in enumerate(blocks):
@@ -318,28 +291,29 @@ def verify_level_solvable(level_data, fast_mode=False):
         if len(matching_coins) < block_counter:
             return False
         
-        # Build obstacles: OTHER blocks + ALL coins (except target)
+        # Build other_blocks set (excluding current block)
         other_blocks = set()
         for other_id, cells in all_other_blocks.items():
             if other_id != block_id:
                 other_blocks.update(cells)
         
         # Check if block can reach at least ONE coin
-        # CRITICAL: Coins are obstacles (passed via coin_positions parameter)
-        # Other blocks are obstacles (passed via other_blocks parameter)
-        # DO NOT mix them - BFS handles them separately!
+        # Use a more permissive check: ignore other blocks for initial reachability
+        # (blocks can move during gameplay, so they're not permanent obstacles)
         can_reach_any = False
         
+        # First try: check without other blocks (more permissive)
         for coin_pos in matching_coins[:min(block_counter, len(matching_coins))]:
-            # Check if block can reach this coin
-            # other_blocks = positions of OTHER blocks (NOT coins!)
-            # all_coin_positions = positions of ALL coins (BFS will exclude target)
-            if can_block_reach_position(block_pos, block_shape, coin_pos, 
-                                       layout, grid_w, grid_h, 
-                                       other_blocks,  # Just blocks, not coins!
-                                       all_coin_positions):  # All coins
+            if can_block_reach_position(block_pos, block_shape, coin_pos, layout, grid_w, grid_h, set()):
                 can_reach_any = True
                 break
+        
+        # If that fails, try with other blocks (more strict, but still valid)
+        if not can_reach_any:
+            for coin_pos in matching_coins[:min(block_counter, len(matching_coins))]:
+                if can_block_reach_position(block_pos, block_shape, coin_pos, layout, grid_w, grid_h, other_blocks):
+                    can_reach_any = True
+                    break
         
         if not can_reach_any:
             return False
@@ -347,39 +321,40 @@ def verify_level_solvable(level_data, fast_mode=False):
     return True
 
 def create_level_data(level_num):
-    # SIMPLIFIED difficulty progression for better solvability
-    # Fewer blocks, larger grids, less walls = easier to solve
+    # Updated difficulty progression with user requirements
+    # Level 5+: minimum 3 blocks, up to 7 blocks
+    # Smaller grids, more walls from level 5+
     
     if level_num <= 4:
         # Tutorial levels: 1-2 blocks, easy
         num_blocks = random.randint(1, 2)
         num_coins_per_block = random.randint(2, 3)
-        grid_w, grid_h = 7, 7  # Larger grid for tutorials
+        grid_w, grid_h = 6, 6  # Smaller grid for tutorials
         wall_density = 0.0  # No walls
     elif level_num <= 20:
-        # Early challenge: 2-3 blocks (reduced from 3-4)
-        num_blocks = random.randint(2, 3)
-        num_coins_per_block = random.randint(2, 3)  # Reduced from 3-4
-        grid_w, grid_h = 8, 8  # Larger grid (was 7x7)
-        wall_density = 0.05  # Reduced walls (was 0.10)
+        # Early challenge: 3-4 blocks, walls introduced
+        num_blocks = random.randint(3, 4)
+        num_coins_per_block = random.randint(3, 4)
+        grid_w, grid_h = 7, 7  # Compact grid
+        wall_density = 0.10  # 10% walls for challenge
     elif level_num <= 50:
-        # Mid levels: 2-4 blocks (reduced from 3-5)
-        num_blocks = random.randint(2, 4)
-        num_coins_per_block = random.randint(2, 4)  # Reduced from 3-5
-        grid_w, grid_h = 9, 9  # Larger grid (was 8x8)
-        wall_density = 0.08  # Reduced walls (was 0.15)
-    elif level_num <= 100:
-        # Advanced: 3-5 blocks (reduced from 4-6)
+        # Mid levels: 3-5 blocks, more walls
         num_blocks = random.randint(3, 5)
-        num_coins_per_block = random.randint(3, 5)  # Reduced from 4-6
-        grid_w, grid_h = 10, 10  # Larger grid (was 9x9)
-        wall_density = 0.10  # Reduced walls (was 0.18)
-    else:
-        # Expert: 4-6 blocks (reduced from 5-7)
+        num_coins_per_block = random.randint(3, 5)
+        grid_w, grid_h = 8, 8
+        wall_density = 0.15  # 15% walls
+    elif level_num <= 100:
+        # Advanced: 4-6 blocks, significant walls
         num_blocks = random.randint(4, 6)
-        num_coins_per_block = random.randint(4, 6)  # Reduced from 5-7
-        grid_w, grid_h = 11, 11  # Larger grid (was 10x10)
-        wall_density = 0.12  # Reduced walls (was 0.20)
+        num_coins_per_block = random.randint(4, 6)
+        grid_w, grid_h = 9, 9
+        wall_density = 0.18  # 18% walls
+    else:
+        # Expert: 5-7 blocks, maximum challenge
+        num_blocks = random.randint(5, 7)
+        num_coins_per_block = random.randint(5, 7)
+        grid_w, grid_h = 10, 10
+        wall_density = 0.20  # 20% walls
 
     layout = generate_layout(grid_w, grid_h, wall_density)
     empty_spots = find_empty_spots(layout)
