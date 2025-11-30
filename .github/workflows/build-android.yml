@@ -42,11 +42,13 @@ jobs:
       run: mkdir -p ~/.buildozer
     
     - name: Build Android APK
+      timeout-minutes: 120
       run: |
         cd ${{ github.workspace }}
         yes | buildozer android debug 2>&1 | tee build.log
       env:
         BUILDOZER_LOG_LEVEL: 2
+        P4A_DEBUG: 1
     
     - name: Upload APK as artifact
       if: success()
