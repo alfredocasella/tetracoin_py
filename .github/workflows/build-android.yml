@@ -1,0 +1,65 @@
+name: Build Android APK
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+    
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          build-essential \
+          python3-dev \
+          python3-pip \
+          git \
+          wget \
+          unzip \
+          openjdk-11-jdk \
+          ant \
+          cython3
+    
+    - name: Install Python dependencies
+      run: |
+        pip install --upgrade pip setuptools wheel
+        pip install buildozer cython pillow certifi
+    
+    - name: Create buildozer cache directory
+      run: mkdir -p ~/.buildozer
+    
+    - name: Build Android APK
+      run: |
+        cd ${{ github.workspace }}
+        yes | buildozer android debug 2>&1 | tee build.log
+      env:
+        BUILDOZER_LOG_LEVEL: 2
+    
+    - name: Upload APK as artifact
+      if: success()
+      uses: actions/upload-artifact@v3
+      with:
+        name: tetracoin-debug.apk
+        path: ./bin/tetracoin-*-debug.apk
+        retention-days: 30
+    
+    - name: Upload build log
+      if: always()
+      uses: actions/upload-artifact@v3
+      with:
+        name: build-log
+        path: build.log
+        retention-days: 7
