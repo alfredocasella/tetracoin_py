@@ -1,0 +1,13 @@
+venv/
+env/
+__pycache__/
+*.pyc
+.buildozer/
+bin/
+.DS_Store
+.vscode/
+.idea/
+*.log
+Dockerfile
+build_output.log
+entrypoint.sh

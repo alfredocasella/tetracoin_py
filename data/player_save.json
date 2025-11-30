@@ -1,0 +1,100 @@
+{
+  "player": {
+    "name": "Player",
+    "total_stars": 26,
+    "tetra_gold": 290,
+    "current_world": 1,
+    "unlocked_levels": 12,
+    "total_moves": 989,
+    "total_time_played": 709.3180000000003
+  },
+  "levels": {
+    "1": {
+      "completed": true,
+      "stars": 3,
+      "best_moves": 0,
+      "best_time": 0.0,
+      "attempts": 28
+    },
+    "2": {
+      "completed": true,
+      "stars": 3,
+      "best_moves": 4,
+      "best_time": 3.144,
+      "attempts": 20
+    },
+    "3": {
+      "completed": true,
+      "stars": 3,
+      "best_moves": 8,
+      "best_time": 2.905,
+      "attempts": 19
+    },
+    "4": {
+      "completed": true,
+      "stars": 3,
+      "best_moves": 3,
+      "best_time": 1.558,
+      "attempts": 15
+    },
+    "5": {
+      "completed": true,
+      "stars": 3,
+      "best_moves": 2,
+      "best_time": 2.013,
+      "attempts": 8
+    },
+    "6": {
+      "completed": true,
+      "stars": 2,
+      "best_moves": 4,
+      "best_time": 2.647,
+      "attempts": 5
+    },
+    "7": {
+      "completed": true,
+      "stars": 3,
+      "best_moves": 2,
+      "best_time": 2.304,
+      "attempts": 5
+    },
+    "8": {
+      "completed": true,
+      "stars": 1,
+      "best_moves": 8,
+      "best_time": 2.886,
+      "attempts": 4
+    },
+    "9": {
+      "completed": true,
+      "stars": 3,
+      "best_moves": 2,
+      "best_time": 2.056,
+      "attempts": 3
+    },
+    "10": {
+      "completed": true,
+      "stars": 2,
+      "best_moves": 3,
+      "best_time": 3.02,
+      "attempts": 3
+    },
+    "11": {
+      "completed": true,
+      "stars": 0,
+      "best_moves": 75,
+      "best_time": 37.814,
+      "attempts": 1
+    }
+  },
+  "settings": {
+    "music_volume": 0.7,
+    "sfx_volume": 0.8,
+    "language": "en"
+  },
+  "power_ups": {
+    "hammer": 0,
+    "magnet": 0,
+    "time_freeze": 0
+  }
+}

@@ -1,0 +1,4 @@
+pygame-ce>=2.0.0
+Cython
+setuptools
+
