@@ -7,61 +7,62 @@ on:
     branches: [ main ]
   workflow_dispatch:
 
-jobs:
-  build:
-    runs-on: ubuntu-latest
-    
-    steps:
-    - uses: actions/checkout@v3
-    
-    - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.10'
-    
-    - name: Install system dependencies
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y \
-          build-essential \
-          python3-dev \
-          python3-pip \
-          git \
-          wget \
-          unzip \
-          openjdk-11-jdk \
-          ant \
-          cython3
-    
-    - name: Install Python dependencies
-      run: |
-        pip install --upgrade pip setuptools wheel
-        pip install buildozer cython pillow certifi
-    
-    - name: Create buildozer cache directory
-      run: mkdir -p ~/.buildozer
-    
-    - name: Build Android APK
-      timeout-minutes: 120
-      run: |
-        cd ${{ github.workspace }}
-        yes | buildozer android debug 2>&1 | tee build.log
-      env:
-        BUILDOZER_LOG_LEVEL: 2
-        P4A_DEBUG: 1
-    
-    - name: Upload APK as artifact
-      if: success()
-      uses: actions/upload-artifact@v3
-      with:
-        name: tetracoin-debug.apk
-        path: ./bin/tetracoin-*-debug.apk
-        retention-days: 30
-    
-    - name: Upload build log
-      if: always()
-      uses: actions/upload-artifact@v3
-      with:
-        name: build-log
-        path: build.log
-        retention-days: 7
+steps:
+- uses: actions/checkout@v4 # Aggiornato anche actions/checkout per buona norma
+
+- name: Set up Python
+  uses: actions/setup-python@v4
+  with:
+    python-version: '3.10'
+
+- name: Install system dependencies
+  run: |
+    # Aggiornamento e installazione delle dipendenze necessarie per Kivy/Buildozer
+    sudo apt-get update
+    sudo apt-get install -y \
+      build-essential \
+      python3-dev \
+      python3-pip \
+      git \
+      wget \
+      unzip \
+      openjdk-11-jdk \
+      ant \
+      cython3
+
+- name: Install Python dependencies
+  run: |
+    pip install --upgrade pip setuptools wheel
+    pip install buildozer cython pillow certifi
+
+- name: Create buildozer cache directory
+  run: mkdir -p ~/.buildozer
+
+- name: Build Android APK
+  # Questo timeout è generoso, necessario per i download iniziali di buildozer
+  timeout-minutes: 120
+  run: |
+    # Esecuzione della build di debug
+    cd ${{ github.workspace }}
+    yes | buildozer android debug 2>&1 | tee build.log
+  env:
+    BUILDOZER_LOG_LEVEL: 2 # Livello di log per buildozer
+    P4A_DEBUG: 1 # Debug per Python-for-Android
+
+# --- PUNTO DI FIX 1: Aggiornato actions/upload-artifact a v4 ---
+- name: Upload APK as artifact
+  if: success()
+  uses: actions/upload-artifact@v4 
+  with:
+    name: tetracoin-debug-apk
+    path: ./bin/tetracoin-*-debug.apk
+    retention-days: 30
+
+# --- PUNTO DI FIX 2: Aggiornato actions/upload-artifact a v4 ---
+- name: Upload build log
+  if: always()
+  uses: actions/upload-artifact@v4
+  with:
+    name: build-log
+    path: build.log
+    retention-days: 7
