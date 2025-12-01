@@ -83,7 +83,7 @@ jobs:
       - name: Install Android SDK components
         run: |
           mkdir -p ~/.buildozer/android/platform/android-sdk
-          yes | ${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager --sdk_root=$HOME/.buildozer/android/platform/android-sdk "platforms;android-34" "build-tools;34.0.0" "platform-tools"
+          yes | ${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager --sdk_root=$HOME/.buildozer/android/platform/android-sdk "platforms;android-34" "build-tools;34.0.0" "platform-tools" "cmdline-tools;latest"
 
       - name: Build Android APK
         timeout-minutes: 120
