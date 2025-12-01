@@ -503,7 +503,7 @@ class Game:
             time_remaining = max(0, self.time_limit - elapsed_time)
             
             # Collect objective data - Calculate required coins from blocks
-            objectives = {}
+            self.objectives = {}
             
             # Initialize coins_collected_per_color if not exists
             if not hasattr(self, 'coins_collected_per_color'):
@@ -528,24 +528,25 @@ class Game:
                 
                 # Only show colors that have requirements
                 if required > 0:
-                    objectives[color] = {
-                        'collected': collected,
-                        'required': required
-                    }
+                    self.objectives[color] = required # Store just required count for now, or dict?
+                    # UI expects: for i, (color, required) in enumerate(game_state.level_data['objectives'].items()):
+                    # Wait, UI expects game_state.level_data['objectives'] to be a dict of {color: required}
+                    # But previously it was passed as 'objectives' arg which was {color: {'collected': c, 'required': r}}
+                    
+                    # Let's check UI code again.
+                    # UI code: for i, (color, required) in enumerate(game_state.level_data['objectives'].items()):
+                    # collected = game_state.collected_counts.get(color, 0)
+                    
+                    # So UI expects game_state.level_data['objectives'] to be {color: required_count}
+                    # And it gets collected from game_state.collected_counts.
+                    
+                    # So here in game.py, I should probably update self.level_data['objectives']?
+                    # But level_data is loaded from JSON, modifying it might persist or be wrong if we reload.
+                    # Better to use self.objectives and update UI to use self.objectives.
+                    
+                    self.objectives[color] = required
             
-            self.ui.draw(
-                screen, 
-                self.level_data['id'], 
-                len(self.block_sprites), 
-                len(self.coin_sprites), 
-                time_remaining, 
-                self.move_count,
-                self.save_system.get_gold(),
-                self.save_system.get_total_stars(),
-                lives=self.lives,
-                objectives=objectives,
-                timer_state=self.timer_state
-            )
+            self.ui.draw(screen, self)
             
             # Victory message is now handled by STATE_VICTORY, so we don't draw it here
             # The level_complete flag triggers state change in update()
@@ -557,7 +558,7 @@ class Game:
         preview_gx, preview_gy = preview_pos
         
         # Color: green if valid, red if invalid
-        ghost_color = COLOR_SUCCESS_GREEN if is_valid else COLOR_ERROR_RED
+        ghost_color = BLOCK_COLORS['GREEN']['main'] if is_valid else BLOCK_COLORS['RED']['main']
         alpha = 102  # 40% opacity (0.4 * 255)
         
         # Draw each cell of the block shape at preview position
@@ -584,17 +585,28 @@ class Game:
         grid_height = rows * TILE_SIZE
         grid_rect = pygame.Rect(GRID_OFFSET_X, GRID_OFFSET_Y, grid_width, grid_height)
         
-        # 1. Grid Container (Rounded Box)
-        # Prototype: bg-[#F5F9FF] border-[#D0D7E2] shadow-lg rounded-3xl
+        # Mockup Style: "Tray"
+        # 1. Deep Shadow (Bottom/Right)
+        # 2. Main Tray Body (Light Blue)
+        # 3. Inner Border/Highlight
         
-        # Shadow
-        shadow_rect = grid_rect.inflate(4, 4)
-        shadow_rect.y += 4
-        pygame.draw.rect(screen, (0,0,0,20), shadow_rect, border_radius=20)
+        # Tray Padding (The tray is slightly larger than the grid)
+        tray_padding = 10
+        tray_rect = grid_rect.inflate(tray_padding * 2, tray_padding * 2)
         
-        # Main Box
-        pygame.draw.rect(screen, GRID_CONTAINER_BG, grid_rect, border_radius=20)
-        pygame.draw.rect(screen, GRID_CONTAINER_BORDER, grid_rect, 2, border_radius=20)
+        # 1. Deep Shadow (3D effect downwards)
+        shadow_depth = 15
+        shadow_rect = tray_rect.copy()
+        shadow_rect.height += shadow_depth
+        pygame.draw.rect(screen, TRAY_SHADOW, shadow_rect, border_radius=15)
+        
+        # 2. Main Tray Body
+        pygame.draw.rect(screen, TRAY_BG, tray_rect, border_radius=15)
+        
+        # 3. Border (Slightly darker blue)
+        pygame.draw.rect(screen, TRAY_BORDER, tray_rect, 4, border_radius=15)
+        
+        # Draw static elements (Walls, Voids, Empty Cells)
         
         # Draw static elements (Walls, Voids, Empty Cells)
         for row in range(rows):
@@ -610,14 +622,15 @@ class Game:
                 cell_rect = rect.inflate(-gap*2, -gap*2)
                 
                 if cell_value == 1:  # Wall
-                    # Prototype: bg-[#8A8FA0] border-[#7A8190] rounded-lg border-2
-                    pygame.draw.rect(screen, GRID_CELL_WALL_BG, cell_rect, border_radius=8)
-                    pygame.draw.rect(screen, GRID_CELL_WALL_BORDER, cell_rect, 2, border_radius=8)
+                    # Walls should look like part of the tray structure
+                    # Use Tray Border color
+                    pygame.draw.rect(screen, TRAY_BORDER, cell_rect, border_radius=8)
                     
                 elif cell_value == 2:  # Void
                     # Transparent/Background
                     pass
                 else:  # Empty Cell
-                    # Prototype: bg-[#EAF1FF] border-[#D0D7E2] border-opacity-50 rounded-lg border-2
-                    pygame.draw.rect(screen, GRID_CELL_EMPTY_BG, cell_rect, border_radius=8)
-                    pygame.draw.rect(screen, GRID_CELL_EMPTY_BORDER, cell_rect, 2, border_radius=8)
+                    # Light Gray cells
+                    pygame.draw.rect(screen, GRID_CELL_BG, cell_rect, border_radius=4)
+                    # Optional: faint border
+                    # pygame.draw.rect(screen, GRID_LINE_COLOR, cell_rect, 1, border_radius=4)

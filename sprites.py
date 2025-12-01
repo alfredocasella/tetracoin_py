@@ -83,73 +83,118 @@ class BlockSprite(pygame.sprite.Sprite):
         # Get colors
         color_key = self.block_data['color']
         colors = BLOCK_COLORS.get(color_key, BLOCK_COLORS['YELLOW'])
-        fill_color = colors['fill']
-        border_color = colors['border']
+    def update_appearance(self):
+        # Clear surface
+        self.image.fill((0, 0, 0, 0))
         
-        # Draw each cell as a separate rounded rect with gaps
-        # Prototype uses (cellSize + 4) spacing.
-        # Our TILE_SIZE includes the gap.
-        # So we should draw the cell smaller than TILE_SIZE.
+        # Get colors
+        color_key = self.block_data['color']
+        colors = BLOCK_COLORS.get(color_key, BLOCK_COLORS['YELLOW'])
         
-        gap = 4
-        cell_size = TILE_SIZE - gap
-        offset = gap // 2
+        # Mockup Style: "Hollow Tray"
+        # 1. Draw the "Floor" (Inner Shadow) - Darker color
+        # 2. Draw the "Walls" (Outer Border) - Main color, thick
+        
+        wall_color = colors['main']
+        floor_color = colors['dark']
+        
+        wall_thickness = 8 # Thick walls
+        
+        # We need to draw the unified shape.
+        # Since we don't have a complex polygon merger, we'll draw per-cell
+        # but carefully to make it look unified.
+        
+        # 1. Draw Floor (The dark inner part)
+        # It should be inset by wall_thickness
+        
+        # Strategy: Draw full cells in Wall Color, then draw smaller cells in Floor Color on top
+        
+        # Pass 1: Draw Walls (Base)
+        for dx, dy in self.shape_cells:
+            cell_x = dx * TILE_SIZE
+            cell_y = dy * TILE_SIZE
+            
+            # Draw full cell in wall color
+            # We add a small overlap to merge adjacent cells visually
+            rect = pygame.Rect(cell_x, cell_y, TILE_SIZE, TILE_SIZE)
+            pygame.draw.rect(self.image, wall_color, rect)
+            
+        # Pass 2: Draw Floor (Inner Dark Part)
+        # We only draw the floor if the side is NOT connected to another cell
+        # Actually, for a hollow tray look, the floor is continuous inside.
+        # So we draw the floor in the center of each cell, and connect them if neighbors exist.
         
         for dx, dy in self.shape_cells:
-            cell_x = dx * TILE_SIZE + offset
-            cell_y = dy * TILE_SIZE + offset
+            cell_x = dx * TILE_SIZE
+            cell_y = dy * TILE_SIZE
             
-            # Main Body (Rounded Rect)
-            rect = pygame.Rect(cell_x, cell_y, cell_size, cell_size)
+            # Inner rect for this cell
+            inner_rect = pygame.Rect(
+                cell_x + wall_thickness, 
+                cell_y + wall_thickness, 
+                TILE_SIZE - 2 * wall_thickness, 
+                TILE_SIZE - 2 * wall_thickness
+            )
+            pygame.draw.rect(self.image, floor_color, inner_rect)
             
-            # Draw Fill
-            pygame.draw.rect(self.image, fill_color, rect, border_radius=8)
+            # Connect to neighbors (fill the gap in the wall)
+            neighbors = {
+                'top': (dx, dy - 1) in self.shape_cells,
+                'bottom': (dx, dy + 1) in self.shape_cells,
+                'left': (dx - 1, dy) in self.shape_cells,
+                'right': (dx + 1, dy) in self.shape_cells
+            }
             
-            # Draw Border (Inset)
-            pygame.draw.rect(self.image, border_color, rect, 3, border_radius=8)
-            
-            # Top Highlight
-            highlight_rect = pygame.Rect(cell_x + 3, cell_y + 3, cell_size - 6, cell_size // 2 - 3)
-            s = pygame.Surface((highlight_rect.width, highlight_rect.height), pygame.SRCALPHA)
-            s.fill((255, 255, 255, 40))
-            self.image.blit(s, highlight_rect)
-            
-            # Bottom Shadow
-            shadow_rect = pygame.Rect(cell_x + 3, cell_y + cell_size // 2, cell_size - 6, cell_size // 2 - 3)
-            s = pygame.Surface((shadow_rect.width, shadow_rect.height), pygame.SRCALPHA)
-            s.fill((0, 0, 0, 20))
-            self.image.blit(s, shadow_rect)
+            if neighbors['top']:
+                # Fill gap upwards
+                gap_rect = pygame.Rect(inner_rect.left, cell_y, inner_rect.width, wall_thickness)
+                pygame.draw.rect(self.image, floor_color, gap_rect)
+                
+            if neighbors['bottom']:
+                # Fill gap downwards
+                gap_rect = pygame.Rect(inner_rect.left, inner_rect.bottom, inner_rect.width, wall_thickness)
+                pygame.draw.rect(self.image, floor_color, gap_rect)
+                
+            if neighbors['left']:
+                # Fill gap left
+                gap_rect = pygame.Rect(cell_x, inner_rect.top, wall_thickness, inner_rect.height)
+                pygame.draw.rect(self.image, floor_color, gap_rect)
+                
+            if neighbors['right']:
+                # Fill gap right
+                gap_rect = pygame.Rect(inner_rect.right, inner_rect.top, wall_thickness, inner_rect.height)
+                pygame.draw.rect(self.image, floor_color, gap_rect)
 
-        # Draw Counter (Badge style)
-        min_x = min(c[0] for c in self.shape_cells)
-        max_x = max(c[0] for c in self.shape_cells)
-        min_y = min(c[1] for c in self.shape_cells)
-        max_y = max(c[1] for c in self.shape_cells)
-        
-        center_x = (min_x + max_x + 1) * TILE_SIZE / 2
-        center_y = (min_y + max_y + 1) * TILE_SIZE / 2
+        # Pass 3: Highlights/Bevels on Walls (Optional, for 3D effect)
+        # Top/Left edges of walls could be lighter
+        highlight_color = (255, 255, 255, 100)
+        for dx, dy in self.shape_cells:
+            cell_x = dx * TILE_SIZE
+            cell_y = dy * TILE_SIZE
+            
+            # If no top neighbor, draw highlight on top wall
+            if (dx, dy - 1) not in self.shape_cells:
+                pygame.draw.rect(self.image, highlight_color, (cell_x, cell_y, TILE_SIZE, 3))
+                
+        # Pass 4: Number Badge (White square in corner)
+        # Find the "last" cell or a specific corner (e.g., bottom-right most)
+        # For simplicity, let's pick the cell with max x + max y
+        target_cell = max(self.shape_cells, key=lambda p: p[0] + p[1])
         
         if self.counter > 0:
-            font = pygame.font.SysFont("Arial", 24, bold=True)
-            text_surf = font.render(str(self.counter), True, (26, 33, 48)) # Dark text
+            badge_size = 20
+            bx = target_cell[0] * TILE_SIZE + TILE_SIZE - badge_size - 4
+            by = target_cell[1] * TILE_SIZE + TILE_SIZE - badge_size - 4
             
-            # Badge background
-            badge_size = int(TILE_SIZE * 0.6)
-            badge_rect = pygame.Rect(0, 0, badge_size, badge_size)
-            badge_rect.center = (center_x, center_y)
+            # White rounded rect
+            badge_rect = pygame.Rect(bx, by, badge_size, badge_size)
+            pygame.draw.rect(self.image, (255, 255, 255), badge_rect, border_radius=5)
             
-            # White circle with border
-            pygame.draw.circle(self.image, (255, 255, 255), badge_rect.center, badge_size // 2)
-            pygame.draw.circle(self.image, border_color, badge_rect.center, badge_size // 2, 2)
-            
-            # If counter is 1, fill with light color
-            if self.counter == 1:
-                s = pygame.Surface((badge_size, badge_size), pygame.SRCALPHA)
-                pygame.draw.circle(s, (*fill_color, 200), (badge_size//2, badge_size//2), badge_size // 2)
-                self.image.blit(s, badge_rect)
-            
-            text_rect = text_surf.get_rect(center=badge_rect.center)
-            self.image.blit(text_surf, text_rect)
+            # Number
+            font = pygame.font.SysFont("Arial", 14, bold=True)
+            text = font.render(str(self.counter), True, (0, 0, 0))
+            text_rect = text.get_rect(center=badge_rect.center)
+            self.image.blit(text, text_rect)
 
     def _draw_3d_cell(self, x, y):
         # Deprecated, replaced by update_appearance container logic

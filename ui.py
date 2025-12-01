@@ -18,19 +18,19 @@ class UI:
         """Update UI animations"""
         self.timer_pulse_time += dt * 10  # Increment pulse animation
         
-    def draw(self, screen, level_id, blocks_remaining, coins_remaining, time_remaining, move_count, gold=0, total_stars=0, lives=5, objectives=None, timer_state="NORMAL"):
+    def draw(self, screen, game_state):
         # 1. Draw Top HUD
-        self.draw_top_hud(screen, level_id, time_remaining, lives, gold, timer_state)
+        self.draw_top_hud(screen, game_state)
         
         # 2. Draw Grid Area Background (Optional, helps visualize layout)
         # grid_area_rect = pygame.Rect(0, TOP_HUD_HEIGHT, SCREEN_WIDTH, GRID_AREA_HEIGHT)
         # pygame.draw.rect(screen, BG_COLOR, grid_area_rect)
         
         # 3. Draw Objective Panel
-        self.draw_objectives_panel(screen, objectives)
+        self.draw_objectives_panel(screen, game_state)
         
         # 4. Draw Bottom Bar
-        self.draw_bottom_bar(screen)
+        self.draw_bottom_bar(screen, game_state)
 
     def draw_top_hud(self, screen, level_id, time_remaining, lives, gold, timer_state):
         # Background (Transparent/White)
@@ -85,179 +85,236 @@ class UI:
             pulse_scale = 1.0 + 0.1 * math.sin(self.timer_pulse_time * 10)
         else:
             pulse_scale = 1.0
-            
-        # Timer Pillola
-        pill_width = 280
-        pill_height = 56
-        pill_rect = pygame.Rect(SCREEN_WIDTH // 2 - pill_width // 2, 20, pill_width, pill_height)
+    def draw_top_hud(self, screen, game_state):
+        # 1. Purple Header Background
+        header_rect = pygame.Rect(0, 0, SCREEN_WIDTH, TOP_HUD_HEIGHT)
+        pygame.draw.rect(screen, HEADER_BG, header_rect)
         
-        # Apply pulse scale if critical
-        if timer_state == "CRITICAL" and pulse_scale > 1.0:
-            pill_rect = pill_rect.inflate((pulse_scale - 1.0) * pill_width, (pulse_scale - 1.0) * pill_height)
-            pill_rect.centerx = SCREEN_WIDTH // 2
-            pill_rect.centery = 20 + pill_height // 2
+        # Bottom border of header (slightly lighter/darker purple)
+        pygame.draw.line(screen, (123, 31, 162), (0, TOP_HUD_HEIGHT), (SCREEN_WIDTH, TOP_HUD_HEIGHT), 4)
         
-        # Draw pillola background
-        pygame.draw.rect(screen, COLOR_WHITE, pill_rect, border_radius=28)
-        pygame.draw.rect(screen, GRID_CONTAINER_BORDER, pill_rect, 2, border_radius=28)
+        y_center = (TOP_HUD_HEIGHT + SAFE_AREA_TOP) // 2
         
-        # Clock icon (24x24px per GDD)
-        clock_icon_size = 24
-        clock_x = pill_rect.left + 16
-        clock_y = pill_rect.centery
-        pygame.draw.circle(screen, COLOR_PRIMARY_TEAL, (clock_x, clock_y), clock_icon_size // 2, 2)
-        # Clock hands
-        pygame.draw.line(screen, COLOR_PRIMARY_TEAL, (clock_x, clock_y), (clock_x, clock_y - 6), 2)
-        pygame.draw.line(screen, COLOR_PRIMARY_TEAL, (clock_x, clock_y), (clock_x + 4, clock_y), 2)
+        # 2. Level Badge (Top Left)
+        # Yellow/Orange Rounded Rect
+        badge_w = 100
+        badge_h = 40
+        badge_x = 20
+        badge_y = y_center - badge_h // 2
         
-        # Timer text (Bold, 32px per GDD)
-        time_surf = self.font_medium.render(time_str, True, time_color)
-        time_rect = time_surf.get_rect(center=(pill_rect.centerx, pill_rect.centery))
-        screen.blit(time_surf, time_rect)
+        badge_rect = pygame.Rect(badge_x, badge_y, badge_w, badge_h)
+        # Gradient effect (simulated with nested rects)
+        pygame.draw.rect(screen, HEADER_BUTTON_BORDER, badge_rect, border_radius=10) # Border/Shadow
+        inner_badge = badge_rect.inflate(-4, -4)
+        pygame.draw.rect(screen, HEADER_BUTTON_YELLOW, inner_badge, border_radius=8) # Main fill
         
-        # Right section: Lives, Gold, and Pause Button
-        # Pause Button (Top Right, 56x56px per GDD) - Priority position
-        pause_size = 56
-        pause_rect = pygame.Rect(SCREEN_WIDTH - pause_size - 20, 20, pause_size, pause_size)
+        # Text "Level X"
+        level_text = self.font_small.render(f"Level {game_state.level_data['id']}", True, (255, 255, 255))
+        # Drop shadow for text
+        text_shadow = self.font_small.render(f"Level {game_state.level_data['id']}", True, (160, 0, 0))
+        screen.blit(text_shadow, (badge_rect.centerx - level_text.get_width()//2 + 1, badge_rect.centery - level_text.get_height()//2 + 2))
+        screen.blit(level_text, (badge_rect.centerx - level_text.get_width()//2, badge_rect.centery - level_text.get_height()//2))
         
-        # Lives and Gold (to the left of pause button, vertically stacked)
-        right_x = pause_rect.left - 20
+        # 3. Timer Pill (Center)
+        pill_w = 140
+        pill_h = 40
+        pill_x = (SCREEN_WIDTH - pill_w) // 2
+        pill_y = y_center - pill_h // 2
         
-        # Lives (Top right)
-        heart_size = 24
-        heart_y = 30
-        if right_x > SCREEN_WIDTH // 2:  # Only show if there's space
-            pygame.draw.circle(screen, COLOR_ERROR_RED, (right_x - heart_size, heart_y), heart_size // 2)
-            lives_text = self.font_small.render(f"x {lives}", True, TEXT_COLOR)
-            lives_text_x = right_x - heart_size - lives_text.get_width() - 5
-            if lives_text_x > badge_rect.right + 100:  # Ensure no overlap with level text
-                screen.blit(lives_text, (lives_text_x, heart_y - lives_text.get_height() // 2))
+        pill_rect = pygame.Rect(pill_x, pill_y, pill_w, pill_h)
+        pygame.draw.rect(screen, HEADER_BUTTON_BORDER, pill_rect, border_radius=20) # Border
+        inner_pill = pill_rect.inflate(-4, -4)
+        pygame.draw.rect(screen, HEADER_TIMER_BG, inner_pill, border_radius=18) # Dark Brown Fill
         
-        # Gold (Below lives)
-        coin_size = 24
-        coin_y = 60
-        if right_x > SCREEN_WIDTH // 2:  # Only show if there's space
-            pygame.draw.circle(screen, COLOR_WARNING_ORANGE, (right_x - coin_size, coin_y), coin_size // 2)
-            gold_text = self.font_small.render(f"{gold:,}", True, TEXT_COLOR)
-            gold_text_x = right_x - coin_size - gold_text.get_width() - 5
-            if gold_text_x > badge_rect.right + 100:  # Ensure no overlap
-                screen.blit(gold_text, (gold_text_x, coin_y - gold_text.get_height() // 2))
-        pygame.draw.circle(screen, COLOR_PRIMARY_TEAL, pause_rect.center, pause_size // 2)
+        # Coin Icon on left of pill
+        coin_radius = 14
+        coin_center = (pill_x + 24, pill_y + pill_h // 2)
+        pygame.draw.circle(screen, HEADER_BUTTON_YELLOW, coin_center, coin_radius)
+        pygame.draw.circle(screen, HEADER_BUTTON_BORDER, coin_center, coin_radius, 2)
+        # Inner detail
+        pygame.draw.circle(screen, (255, 235, 59), coin_center, coin_radius - 4)
         
-        # Pause Icon (32px per GDD)
-        icon_size = 32
-        icon_rect = pygame.Rect(0, 0, icon_size, icon_size)
-        icon_rect.center = pause_rect.center
-        pygame.draw.rect(screen, COLOR_WHITE, (icon_rect.left, icon_rect.top, 8, icon_size), border_radius=2)
-        pygame.draw.rect(screen, COLOR_WHITE, (icon_rect.right - 8, icon_rect.top, 8, icon_size), border_radius=2)
-
-    def draw_objectives_panel(self, screen, objectives):
-        # Calculate panel position to avoid overlap
-        panel_y = TOP_HUD_HEIGHT + GRID_AREA_HEIGHT
-        # Ensure panel doesn't go off screen
-        if panel_y + OBJECTIVE_PANEL_HEIGHT > SCREEN_HEIGHT - BOTTOM_BAR_HEIGHT:
-            panel_y = SCREEN_HEIGHT - BOTTOM_BAR_HEIGHT - OBJECTIVE_PANEL_HEIGHT
-        panel_rect = pygame.Rect(0, panel_y, SCREEN_WIDTH, OBJECTIVE_PANEL_HEIGHT)
+        # Timer Text
+        time_left = 0
+        if game_state.time_limit > 0:
+            time_left = max(0, int(game_state.time_limit - (pygame.time.get_ticks() - game_state.start_time) / 1000))
         
-        # Title (Bold, 32px per GDD)
-        title_text = self.font_medium.render("Obiettivi", True, TEXT_COLOR)
-        screen.blit(title_text, (SCREEN_WIDTH // 2 - title_text.get_width() // 2, panel_y + 10))
+        timer_str = f"{time_left // 60}:{time_left % 60:02d}"
+        timer_text = self.font_medium.render(timer_str, True, (255, 255, 255))
+        screen.blit(timer_text, (pill_x + 50, pill_y + 5))
         
-        if objectives:
-            # Draw pills for each color (200x72px per GDD)
-            start_x = 20
-            pill_width = 200
-            pill_height = 72
-            gap = 16
-            
-            # Center pills horizontally
-            total_width = len(objectives) * pill_width + (len(objectives) - 1) * gap
-            start_x = (SCREEN_WIDTH - total_width) // 2
-            
-            # Color-specific pastel backgrounds per GDD
-            pastel_colors = {
-                "YELLOW": (255, 232, 163),  # #FFE8A3
-                "BLUE": (215, 227, 255),    # #D7E3FF
-                "RED": (255, 209, 209),     # #FFD1D1
-                "GREEN": (196, 241, 221),   # #C4F1DD
-                "PURPLE": (228, 209, 255)   # #E4D1FF
-            }
-            
-            for i, (color_name, data) in enumerate(objectives.items()):
-                collected = data['collected']
-                required = data['required']
-                color_rgb = COLORS.get(color_name, (100, 100, 100))
-                pastel_bg = pastel_colors.get(color_name, COLOR_WHITE)
-                
-                x = start_x + i * (pill_width + gap)
-                y = panel_y + 50
-                
-                # Pill bg (200x72px, raggio 36px per GDD)
-                pill_rect = pygame.Rect(x, y, pill_width, pill_height)
-                pygame.draw.rect(screen, pastel_bg, pill_rect, border_radius=36)
-                pygame.draw.rect(screen, color_rgb, pill_rect, 2, border_radius=36)
-                
-                # Coin icon (32-40px per GDD)
-                icon_size = 36
-                icon_x = x + 20
-                icon_y = y + pill_height // 2
-                pygame.draw.circle(screen, color_rgb, (icon_x, icon_y), icon_size // 2)
-                # Inner highlight
-                pygame.draw.circle(screen, pastel_bg, (icon_x - 4, icon_y - 4), icon_size // 4)
-                
-                # Text "x collected / required" (Bold, 28px per GDD)
-                text = f"{collected} / {required}"
-                text_surf = self.font_small.render(text, True, TEXT_COLOR)
-                text_rect = text_surf.get_rect(center=(pill_rect.centerx, pill_rect.centery))
-                screen.blit(text_surf, text_rect)
-                
-                # Checkmark if complete (right side)
-                if collected >= required:
-                    check_x = x + pill_width - 20
-                    check_y = y + 20
-                    # Green checkmark circle
-                    pygame.draw.circle(screen, COLOR_SUCCESS_GREEN, (check_x, check_y), 12)
-                    # White checkmark
-                    pygame.draw.line(screen, COLOR_WHITE, (check_x - 4, check_y), (check_x - 1, check_y + 3), 3)
-                    pygame.draw.line(screen, COLOR_WHITE, (check_x - 1, check_y + 3), (check_x + 4, check_y - 2), 3)
-                else:
-                    # Incomplete: gray circle outline
-                    check_x = x + pill_width - 20
-                    check_y = y + 20
-                    pygame.draw.circle(screen, GRID_LINE_COLOR, (check_x, check_y), 12, 2)
-
-    def draw_bottom_bar(self, screen):
-        bar_y = SCREEN_HEIGHT - BOTTOM_BAR_HEIGHT
-        bar_rect = pygame.Rect(0, bar_y, SCREEN_WIDTH, BOTTOM_BAR_HEIGHT)
+        # 4. Back/Pause Button (Top Right)
+        btn_size = 44
+        btn_x = SCREEN_WIDTH - 20 - btn_size
+        btn_y = y_center - btn_size // 2
         
-        # Background with rounded top corners (#DCE7F9 per GDD)
-        bg_color = (220, 231, 249)  # #DCE7F9
-        pygame.draw.rect(screen, bg_color, bar_rect, border_top_left_radius=24, border_top_right_radius=24)
+        btn_rect = pygame.Rect(btn_x, btn_y, btn_size, btn_size)
+        pygame.draw.rect(screen, HEADER_BUTTON_BORDER, btn_rect, border_radius=10)
+        inner_btn = btn_rect.inflate(-4, -4)
+        pygame.draw.rect(screen, HEADER_BUTTON_YELLOW, inner_btn, border_radius=8)
         
-        # Reset Button (Center, 80-88px per GDD)
-        reset_size = 80
-        reset_center = (SCREEN_WIDTH // 2, bar_y + BOTTOM_BAR_HEIGHT // 2)
-        # Background with 80% opacity teal
-        reset_surface = pygame.Surface((reset_size, reset_size), pygame.SRCALPHA)
-        reset_color = (*COLOR_PRIMARY_TEAL, 204)  # 80% opacity
-        pygame.draw.circle(reset_surface, reset_color, (reset_size // 2, reset_size // 2), reset_size // 2)
-        screen.blit(reset_surface, (reset_center[0] - reset_size // 2, reset_center[1] - reset_size // 2))
-        
-        # Icon (Refresh arrow - white)
-        icon_radius = 30
-        # Draw circular arrow
-        pygame.draw.arc(screen, COLOR_WHITE, 
-                       (reset_center[0] - icon_radius, reset_center[1] - icon_radius, 
-                        icon_radius * 2, icon_radius * 2), 
-                       0.5, 5.5, 4)
-        # Arrow head
-        arrow_x = reset_center[0] + icon_radius * 0.7
-        arrow_y = reset_center[1] - icon_radius * 0.3
-        pygame.draw.polygon(screen, COLOR_WHITE, [
-            (arrow_x, arrow_y),
-            (arrow_x - 8, arrow_y - 4),
-            (arrow_x - 8, arrow_y + 4)
+        # Arrow Icon (White)
+        arrow_center = btn_rect.center
+        # Draw arrow pointing left (Back)
+        pygame.draw.polygon(screen, (255, 255, 255), [
+            (arrow_center[0] - 8, arrow_center[1]),
+            (arrow_center[0] + 4, arrow_center[1] - 8),
+            (arrow_center[0] + 4, arrow_center[1] + 8)
         ])
+        pygame.draw.rect(screen, (255, 255, 255), (arrow_center[0] + 4, arrow_center[1] - 3, 6, 6))
+
+
+    def draw_bottom_bar(self, screen, game_state):
+        # White Bottom Bar with Rounded Corners
+        bar_h = BOTTOM_BAR_HEIGHT
+        bar_y = SCREEN_HEIGHT - bar_h
+        
+        # Shadow/Border top
+        pygame.draw.rect(screen, (200, 200, 200), (0, bar_y + 10, SCREEN_WIDTH, bar_h), border_top_left_radius=30, border_top_right_radius=30)
+        
+        # Main White Body
+        bar_rect = pygame.Rect(0, bar_y + 15, SCREEN_WIDTH, bar_h - 15)
+        pygame.draw.rect(screen, (245, 245, 245), bar_rect, border_top_left_radius=30, border_top_right_radius=30)
+        
+        # Power-up Placeholders (Circles)
+        # 4 items: 3 powerups + 1 pause/menu
+        
+        item_count = 4
+        item_spacing = SCREEN_WIDTH // (item_count + 1)
+        y_center = bar_y + 15 + (bar_h - 15) // 2
+        
+        icons = ["❄️", "💨", "🧲", "⏸️"]
+        colors = [(100, 181, 246), (100, 181, 246), (229, 115, 115), (25, 118, 210)] # Light Blue, Light Blue, Red, Dark Blue
+        
+        for i in range(item_count):
+            x = item_spacing * (i + 1)
+            radius = 28
+            
+            # Circle
+            pygame.draw.circle(screen, colors[i], (x, y_center), radius)
+            pygame.draw.circle(screen, (255, 255, 255), (x, y_center), radius, 3) # White border
+            
+            # Icon (Text for now)
+            # icon_text = self.font_medium.render(icons[i], True, (255, 255, 255))
+            # screen.blit(icon_text, (x - icon_text.get_width()//2, y_center - icon_text.get_height()//2))
+            
+            # Badge (x3, x2, etc)
+            if i < 3:
+                badge_text = self.font_tiny.render(f"x{3-i}", True, (100, 100, 100))
+                screen.blit(badge_text, (x + 10, y_center + 10))
+                
+        # Reset Button Logic (Hidden invisible rect over the 4th icon for now to keep functionality?)
+        # Or map the 4th icon to Reset/Pause
+        
+        # Let's map the 4th icon (Pause/Menu) to Reset for now as requested by previous functionality
+        self.reset_btn_rect = pygame.Rect(item_spacing * 4 - 30, y_center - 30, 60, 60)
+                
+    def draw_objectives_panel(self, screen, game_state):
+        # Glassmorphism Objectives Panel
+        panel_h = 60
+        panel_y = TOP_HUD_HEIGHT + 10
+        
+        # Title "Obiettivi" - Small and elegant
+        font_title = pygame.font.SysFont("Arial", 14, bold=True)
+        title_surf = font_title.render("OBIETTIVI", True, TEXT_COLOR)
+        title_rect = title_surf.get_rect(center=(SCREEN_WIDTH // 2, panel_y))
+        screen.blit(title_surf, title_rect)
+        
+        # Objectives Container
+        container_y = panel_y + 15
+        
+        # Calculate width
+        total_w = 0
+        gap = 15
+        
+        # Prepare surfaces
+        pill_surfs = []
+        
+        for i, (color, required) in enumerate(game_state.objectives.items()):
+            collected = game_state.coins_collected_per_color.get(color, 0)
+            is_complete = collected >= required
+            
+            # Pill dimensions
+            pill_w = 90
+            pill_h = 32
+            
+            s_pill = pygame.Surface((pill_w, pill_h), pygame.SRCALPHA)
+            
+            # Background (Glass)
+            bg_color = (255, 255, 255, 150)
+            border_color = (255, 255, 255, 200)
+            if is_complete:
+                bg_color = (100, 255, 100, 150)
+                border_color = (100, 255, 100, 200)
+                
+            pygame.draw.rect(s_pill, bg_color, (0, 0, pill_w, pill_h), border_radius=16)
+            pygame.draw.rect(s_pill, border_color, (0, 0, pill_w, pill_h), 1, border_radius=16)
+            
+            # Icon (Circle with color)
+            pygame.draw.circle(s_pill, COLORS.get(color, (200, 200, 200)), (16, 16), 8)
+            
+            # Text
+            font_obj = pygame.font.SysFont("Arial", 16, bold=True)
+            text = f"{collected}/{required}"
+            text_surf = font_obj.render(text, True, TEXT_COLOR)
+            text_rect = text_surf.get_rect(midleft=(32, 16))
+            s_pill.blit(text_surf, text_rect)
+            
+            # Checkmark if complete
+            if is_complete:
+                # Simple checkmark
+                pygame.draw.line(s_pill, TEXT_COLOR, (pill_w - 20, 16), (pill_w - 16, 20), 2)
+                pygame.draw.line(s_pill, TEXT_COLOR, (pill_w - 16, 20), (pill_w - 10, 10), 2)
+            
+            pill_surfs.append(s_pill)
+            total_w += pill_w + gap
+            
+        if total_w > 0:
+            total_w -= gap # Remove last gap
+        
+        # Draw centered
+        start_x = (SCREEN_WIDTH - total_w) // 2
+        current_x = start_x
+        
+        for s in pill_surfs:
+            screen.blit(s, (current_x, container_y))
+            current_x += s.get_width() + gap
+
+    def draw_bottom_bar(self, screen, game_state):
+        # Draw Bottom Bar
+        bar_height = BOTTOM_BAR_HEIGHT
+        bar_y = SCREEN_HEIGHT - bar_height
+        bar_rect = pygame.Rect(0, bar_y, SCREEN_WIDTH, bar_height)
+        
+        # Background (Optional, maybe just transparent or gradient)
+        # pygame.draw.rect(screen, (0, 0, 0, 50), bar_rect)
+
+        # Reset Button (Center)
+        btn_size = 60
+        btn_rect = pygame.Rect((SCREEN_WIDTH - btn_size) // 2, bar_y + (bar_height - btn_size) // 2, btn_size, btn_size)
+        
+        # Glass Button
+        s_btn = pygame.Surface((btn_size, btn_size), pygame.SRCALPHA)
+        pygame.draw.circle(s_btn, (255, 255, 255, 30), (btn_size//2, btn_size//2), btn_size//2) # Fill
+        pygame.draw.circle(s_btn, (255, 255, 255, 100), (btn_size//2, btn_size//2), btn_size//2, 2) # Border
+        
+        # Reload Icon (Circular Arrow)
+        center = btn_size // 2
+        radius = 15
+        rect = pygame.Rect(center - radius, center - radius, radius * 2, radius * 2)
+        pygame.draw.arc(s_btn, (255, 255, 255), rect, 0.5, 5.8, 3) # Partial circle
+        
+        # Arrow head
+        # Tip of arc is at roughly 0.5 radians (approx 30 deg)
+        # Simple triangle
+        pygame.draw.polygon(s_btn, (255, 255, 255), [(center + radius, center), (center + radius + 6, center - 6), (center + radius - 6, center - 6)])
+        
+        screen.blit(s_btn, btn_rect)
+        
+        # Store rect for click detection
+        self.reset_btn_rect = btn_rect
+        
+
         
         # Label (optional, below button)
         # label = self.font_tiny.render("RESET", True, TEXT_COLOR)
@@ -284,7 +341,9 @@ class UI:
         pygame.draw.rect(screen, COLOR_WHITE, card_rect, border_radius=16)
         
         # Header (Display Bold, 48-56px per GDD)
-        header_text = self.font_large.render(message, True, COLOR_SUCCESS_GREEN if stars is not None else COLOR_ERROR_RED)
+        # Header (Display Bold, 48-56px per GDD)
+        header_color = BLOCK_COLORS['GREEN']['main'] if stars is not None else BLOCK_COLORS['RED']['main']
+        header_text = self.font_large.render(message, True, header_color)
         header_rect = header_text.get_rect(center=(SCREEN_WIDTH // 2, card_rect.top + 50))
         screen.blit(header_text, header_rect)
         

@@ -7,6 +7,7 @@ TITLE = "TetraCoin"
 FPS = 60
 
 # Layout Settings
+SAFE_AREA_TOP = 40    # Space for status bar/notch
 TOP_HUD_HEIGHT = 90       # Further reduced from 100
 BOTTOM_BAR_HEIGHT = 110   # Reduced from 120
 OBJECTIVE_PANEL_HEIGHT = 160  # Increased from 140 for better visibility
@@ -20,44 +21,52 @@ TILE_SIZE = 50  # Reduced from 52 to 50 for even more compact fit (7*50=350px)
 
 # Modern Cartoon Color Palette
 # Web Prototype Color Palette
-BG_COLOR = (242, 247, 255)  # #F2F7FF
-GRID_CONTAINER_BG = (245, 249, 255) # #F5F9FF
-GRID_CONTAINER_BORDER = (208, 215, 226) # #D0D7E2
+# Mockup Color Palette
+BG_COLOR = (225, 245, 254)  # Light Blue/Gray background #E1F5FE
 
-GRID_CELL_EMPTY_BG = (234, 241, 255) # #EAF1FF
-GRID_CELL_EMPTY_BORDER = (208, 215, 226) # #D0D7E2
+# Header
+HEADER_BG = (106, 27, 154) # Purple #6A1B9A
+HEADER_BUTTON_YELLOW = (255, 193, 7) # Amber #FFC107
+HEADER_BUTTON_BORDER = (255, 111, 0) # Darker Orange #FF6F00
+HEADER_TIMER_BG = (62, 39, 35) # Dark Brown #3E2723
 
-GRID_CELL_WALL_BG = (138, 143, 160) # #8A8FA0
-GRID_CELL_WALL_BORDER = (122, 129, 144) # #7A8190
+# Grid Tray
+TRAY_BG = (129, 212, 250) # Light Blue Tray #81D4FA
+TRAY_BORDER = (41, 182, 246) # Darker Blue Border #29B6F6
+TRAY_SHADOW = (2, 119, 189) # Deep Blue Shadow #0277BD
 
-GRID_LINE_COLOR = (208, 215, 226) # Re-added for compatibility (matches border)
+# Grid Cells
+GRID_CELL_BG = (224, 224, 224) # Light Gray #E0E0E0
+GRID_LINE_COLOR = (189, 189, 189) # Gray #BDBDBD
 
-TEXT_COLOR = (26, 33, 48) # #1A2130
+# Text
+TEXT_COLOR = (255, 255, 255) # White text for header
+TEXT_COLOR_DARK = (60, 60, 60) # Dark text for other areas
 
 # UI Colors
-COLOR_PRIMARY_TEAL = (0, 194, 168) # #00C2A8
+COLOR_PRIMARY_TEAL = (0, 194, 168) # Keep for legacy/accents
 COLOR_WHITE = (255, 255, 255)
-COLOR_ERROR_RED = (255, 90, 90)
-COLOR_WARNING_ORANGE = (255, 159, 67)
-COLOR_SUCCESS_GREEN = (51, 204, 122) # Using Green from palette
 
-# Block Colors (Fill and Border)
+# Block Colors (Vibrant, "Tray" look)
+# Format: {Fill (Walls), Dark (Inner Shadow/Floor)}
 BLOCK_COLORS = {
-    "YELLOW": {"fill": (255, 201, 77), "border": (217, 152, 31)}, # #FFC94D, #D9981F
-    "BLUE":   {"fill": (79, 139, 255), "border": (42, 87, 191)},  # #4F8BFF, #2A57BF
-    "RED":    {"fill": (255, 90, 90),  "border": (194, 48, 48)},  # #FF5A5A, #C23030
-    "GREEN":  {"fill": (51, 204, 122), "border": (34, 153, 87)},  # #33CC7A, #229957
-    "PURPLE": {"fill": (184, 112, 255),"border": (124, 58, 194)}, # #B870FF, #7C3AC2
+    "YELLOW": {"main": (255, 213, 79), "dark": (196, 144, 0)},   # Amber
+    "BLUE":   {"main": (33, 150, 243), "dark": (13, 71, 161)},   # Blue
+    "RED":    {"main": (244, 67, 54),  "dark": (183, 28, 28)},   # Red
+    "GREEN":  {"main": (76, 175, 80),  "dark": (27, 94, 32)},    # Green
+    "PURPLE": {"main": (156, 39, 176), "dark": (74, 20, 140)},   # Purple
+    "ORANGE": {"main": (255, 152, 0),  "dark": (230, 81, 0)},    # Orange
+    "PINK":   {"main": (233, 30, 99),  "dark": (136, 14, 79)},   # Pink
 }
 
-# Coin Colors (Fill and Border)
+# Coin Colors
 COIN_COLORS = {
-    "YELLOW": {"fill": (255, 214, 107), "border": (217, 168, 66)}, # #FFD66B, #D9A842
-    "BLUE":   {"fill": (107, 160, 255), "border": (62, 107, 217)}, # #6BA0FF, #3E6BD9
-    "RED":    {"fill": (255, 122, 122), "border": (217, 71, 71)},  # #FF7A7A, #D94747
-    "GREEN":  {"fill": (77, 222, 138),  "border": (46, 170, 96)},  # #4DDE8A, #2EAA60
-    "PURPLE": {"fill": (200, 138, 255), "border": (138, 75, 217)}, # #C88AFF, #8A4BD9
+    "YELLOW": {"fill": (255, 215, 0), "border": (184, 134, 11)},
+    "BLUE":   {"fill": (64, 196, 255), "border": (0, 145, 234)},
+    "RED":    {"fill": (255, 82, 82), "border": (211, 47, 47)},
+    "GREEN":  {"fill": (105, 240, 174), "border": (0, 200, 83)},
+    "PURPLE": {"fill": (224, 64, 251), "border": (170, 0, 255)},
 }
 
 # Map string keys to these dicts for compatibility
-COLORS = {k: v["fill"] for k, v in BLOCK_COLORS.items()}
+COLORS = {k: v["main"] for k, v in BLOCK_COLORS.items()}
