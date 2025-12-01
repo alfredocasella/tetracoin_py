@@ -26,9 +26,9 @@ jobs:
           path: |
             ~/.buildozer
             .buildozer
-          key: ${{ runner.os }}-buildozer-v2-${{ hashFiles('buildozer.spec') }}
+          key: ${{ runner.os }}-buildozer-v3-${{ hashFiles('buildozer.spec') }}
           restore-keys: |
-            ${{ runner.os }}-buildozer-v2-
+            ${{ runner.os }}-buildozer-v3-
 
       - name: Install system dependencies
         run: |
@@ -72,6 +72,7 @@ jobs:
         run: |
           rm -rf .buildozer/android/platform/build-*
           rm -rf .buildozer/android/app
+          rm -rf ~/.buildozer/android/platform/android-sdk
 
       - name: Build Android APK
         timeout-minutes: 120
