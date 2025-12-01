@@ -191,7 +191,7 @@ class BlockSprite(pygame.sprite.Sprite):
             pygame.draw.rect(self.image, (255, 255, 255), badge_rect, border_radius=5)
             
             # Number
-            font = pygame.font.SysFont("Arial", 14, bold=True)
+            font = pygame.font.Font(None, 20)
             text = font.render(str(self.counter), True, (0, 0, 0))
             text_rect = text.get_rect(center=badge_rect.center)
             self.image.blit(text, text_rect)

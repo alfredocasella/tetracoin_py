@@ -4,10 +4,10 @@ from settings import *
 
 class UI:
     def __init__(self):
-        self.font_large = pygame.font.SysFont("Arial", 48, bold=True)
-        self.font_medium = pygame.font.SysFont("Arial", 32, bold=True)
-        self.font_small = pygame.font.SysFont("Arial", 24, bold=True)
-        self.font_tiny = pygame.font.SysFont("Arial", 18, bold=True)
+        self.font_large = pygame.font.Font(None, 48)
+        self.font_medium = pygame.font.Font(None, 32)
+        self.font_small = pygame.font.Font(None, 24)
+        self.font_tiny = pygame.font.Font(None, 18)
         
         # Animation state for timer pulse
         self.timer_pulse_time = 0
@@ -215,7 +215,7 @@ class UI:
         panel_y = TOP_HUD_HEIGHT + 10
         
         # Title "Obiettivi" - Small and elegant
-        font_title = pygame.font.SysFont("Arial", 14, bold=True)
+        font_title = pygame.font.Font(None, 14)
         title_surf = font_title.render("OBIETTIVI", True, TEXT_COLOR)
         title_rect = title_surf.get_rect(center=(SCREEN_WIDTH // 2, panel_y))
         screen.blit(title_surf, title_rect)
@@ -254,7 +254,7 @@ class UI:
             pygame.draw.circle(s_pill, COLORS.get(color, (200, 200, 200)), (16, 16), 8)
             
             # Text
-            font_obj = pygame.font.SysFont("Arial", 16, bold=True)
+            font_obj = pygame.font.Font(None, 16)
             text = f"{collected}/{required}"
             text_surf = font_obj.render(text, True, TEXT_COLOR)
             text_rect = text_surf.get_rect(midleft=(32, 16))
