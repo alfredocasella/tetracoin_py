@@ -26,9 +26,9 @@ jobs:
           path: |
             ~/.buildozer
             .buildozer
-          key: ${{ runner.os }}-buildozer-${{ hashFiles('buildozer.spec') }}
+          key: ${{ runner.os }}-buildozer-v2-${{ hashFiles('buildozer.spec') }}
           restore-keys: |
-            ${{ runner.os }}-buildozer-
+            ${{ runner.os }}-buildozer-v2-
 
       - name: Install system dependencies
         run: |
@@ -49,12 +49,19 @@ jobs:
             automake \
             libtool \
             pkg-config \
-            zlib1g-dev
+            zlib1g-dev \
+            libncurses5-dev \
+            libncursesw5-dev \
+            libtinfo5 \
+            cmake \
+            libpng-dev \
+            libjpeg-dev
 
       - name: Install Python dependencies
         run: |
           pip install --upgrade pip setuptools wheel
-          pip install buildozer cython pillow certifi
+          pip install buildozer==1.5.0 cython==0.29.36 pillow certifi
+          pip install --upgrade python-for-android
 
       - name: Create buildozer cache directory
         run: mkdir -p ~/.buildozer
@@ -66,10 +73,15 @@ jobs:
           echo "d56f5187479451eabf01fb78af6dfcb131a6481e" >> ~/.buildozer/android/platform/android-sdk/licenses/android-sdk-license
           echo "24333f8a63b6825ea9c5514f83c2829b004d1fee" > ~/.buildozer/android/platform/android-sdk/licenses/android-sdk-preview-license
 
+      - name: Clean previous builds (if cache is corrupted)
+        run: |
+          rm -rf .buildozer/android/platform/build-*
+          rm -rf .buildozer/android/app
+
       - name: Build Android APK
         timeout-minutes: 120
         run: |
-          buildozer android debug 2>&1 | tee build.log
+          buildozer -v android debug 2>&1 | tee build.log
         env:
           BUILDOZER_LOG_LEVEL: 2
           P4A_DEBUG: 1
