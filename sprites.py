@@ -236,117 +236,97 @@ class CoinSprite(pygame.sprite.Sprite):
         super().__init__(groups)
         self.coin_data = coin_data
         self.grid_x, self.grid_y = coin_data['pos']
-        self.color = COLORS.get(coin_data['color'], (255, 215, 0))
         
         # Use provided offsets or fallback to settings
         self.offset_x = grid_offsets[0] if grid_offsets else GRID_OFFSET_X
         self.offset_y = grid_offsets[1] if grid_offsets else GRID_OFFSET_Y
         
         self.base_size = TILE_SIZE
-        self.image = pygame.Surface((self.base_size, self.base_size), pygame.SRCALPHA)
+        # Increase height to accommodate the stack
+        self.image = pygame.Surface((self.base_size, self.base_size + 20), pygame.SRCALPHA)
         self.rect = self.image.get_rect()
         
-        # Set initial position with Y offset for 3D effect
-        y_offset = -4  # Slightly above cell for stacked effect
+        # Set initial position
+        # Adjust Y to align the bottom of the stack with the cell bottom
+        # The stack grows upwards, so the "base" of the stack should be at the cell's bottom area
         self.rect.x = self.offset_x + self.grid_x * TILE_SIZE
-        self.rect.y = self.offset_y + self.grid_y * TILE_SIZE + y_offset
+        # Shift up slightly to center the visual weight or align bottom
+        self.rect.y = self.offset_y + self.grid_y * TILE_SIZE - 15 
         
         # Animation state
         self.original_y = self.rect.y
         self.pulse_time = 0
-        self.sparkle_timer = 0
         
-        # Load and apply color tinting
-        self._apply_color_tint()
+        # Generate the coin stack image
+        self._generate_coin_image()
         
-    def _load_base_sprite(self):
-        """Load the greyscale base sprite (cached at class level)"""
-        if CoinSprite._base_sprite is None:
-            asset_path = os.path.join(os.path.dirname(__file__), 'assets', 'coin_stack_base.png')
-            
-            if os.path.exists(asset_path):
-                # Load from PNG
-                loaded_sprite = pygame.image.load(asset_path).convert_alpha()
-                CoinSprite._base_sprite = pygame.transform.scale(loaded_sprite, (self.base_size, self.base_size))
-            else:
-                # Fallback: generate procedurally if asset doesn't exist
-                print(f"Warning: {asset_path} not found, generating procedurally")
-                CoinSprite._base_sprite = self._generate_greyscale_sprite()
-                
-        return CoinSprite._base_sprite
-    
-    def _generate_greyscale_sprite(self):
-        """Fallback: Generate greyscale sprite procedurally"""
-        sprite = pygame.Surface((self.base_size, self.base_size), pygame.SRCALPHA)
-        sprite.fill((0, 0, 0, 0))
+    def _generate_coin_image(self):
+        """Generate a stack of 3 coins using vector drawing"""
+        self.image.fill((0, 0, 0, 0))
         
-        center_x = self.base_size // 2
-        disc_radius = (self.base_size - 8) // 2
-        num_discs = 6
-        disc_thickness = 2
-        disc_spacing = 2
-        base_y = self.base_size - 4
-        
-        # Greyscale colors
-        light_grey = (200, 200, 200)
-        dark_grey = (100, 100, 100)
-        white = (255, 255, 255)
-        
-        # Shadow
-        shadow_rect = pygame.Rect(center_x - disc_radius - 1, base_y + 1,
-                                  disc_radius * 2 + 2, 4)
-        pygame.draw.ellipse(sprite, (40, 40, 40, 150), shadow_rect)
-        
-        # Draw discs
-        for i in range(num_discs):
-            disc_y = base_y - (i * (disc_thickness + disc_spacing))
-            
-            # Edge
-            edge_rect = pygame.Rect(center_x - disc_radius, disc_y,
-                                   disc_radius * 2, disc_thickness)
-            pygame.draw.rect(sprite, dark_grey, edge_rect)
-            pygame.draw.circle(sprite, dark_grey,
-                             (center_x - disc_radius, disc_y + disc_thickness // 2),
-                             disc_thickness // 2)
-            pygame.draw.circle(sprite, dark_grey,
-                             (center_x + disc_radius, disc_y + disc_thickness // 2),
-                             disc_thickness // 2)
-            
-            # Top face
-            top_y = disc_y - 1
-            top_rect = pygame.Rect(center_x - disc_radius, top_y,
-                                  disc_radius * 2, disc_thickness + 2)
-            pygame.draw.ellipse(sprite, light_grey, top_rect)
-            pygame.draw.ellipse(sprite, white, top_rect, 1)
-        
-        return sprite
-    
-    def _apply_color_tint(self):
-        """Apply color tint to greyscale base sprite"""
-        # Load base sprite
-        base_sprite = self._load_base_sprite()
-        
-        # Create tinted version
-        self.image = base_sprite.copy()
-        
-        # Get tint color from coin data
         color_key = self.coin_data['color']
         colors = COIN_COLORS.get(color_key, COIN_COLORS['YELLOW'])
-        tint_color = colors['fill']
         
-        # Apply tint using RGBA multiply blend
-        # Create a tint surface
-        tint_surface = pygame.Surface((self.base_size, self.base_size), pygame.SRCALPHA)
-        tint_surface.fill((*tint_color, 255))
+        fill_color = colors['fill']
+        # Use the border color defined in settings as the "side" (darker) color
+        side_color = colors['border'] 
+        # Create a darker outline color
+        outline_color = (
+            max(0, side_color[0] - 50),
+            max(0, side_color[1] - 50),
+            max(0, side_color[2] - 50)
+        )
         
-        # Apply multiplicative blend to tint the sprite
-        self.image.blit(tint_surface, (0, 0), special_flags=pygame.BLEND_RGBA_MULT)
+        # Coin dimensions
+        coin_w = self.base_size - 10 # Slight padding
+        coin_h = 12 # Thickness of the cylinder
+        oval_h = 14 # Height of the top/bottom ellipse (perspective)
         
+        center_x = self.image.get_width() // 2
+        bottom_y = self.image.get_height() - 10
+        
+        # Draw stack of 3 coins (bottom to top)
+        num_coins = 3
+        stack_overlap = 8 # How much they overlap vertically
+        
+        for i in range(num_coins):
+            # Calculate Y position for this coin
+            # i=0 is bottom, i=2 is top
+            y = bottom_y - (i * stack_overlap) - coin_h
+            
+            # Rects for drawing
+            # Top face bounds
+            top_rect = pygame.Rect(center_x - coin_w//2, y, coin_w, oval_h)
+            # Bottom face bounds (for the cylinder bottom curve)
+            bottom_rect = pygame.Rect(center_x - coin_w//2, y + coin_h, coin_w, oval_h)
+            
+            # 1. Draw Cylinder Body (Side)
+            # Rectangle part
+            body_rect = pygame.Rect(center_x - coin_w//2, y + oval_h//2, coin_w, coin_h)
+            pygame.draw.rect(self.image, side_color, body_rect)
+            
+            # Bottom curve (Ellipse)
+            pygame.draw.ellipse(self.image, side_color, bottom_rect)
+            
+            # Side Outline (Vertical lines)
+            pygame.draw.line(self.image, outline_color, body_rect.topleft, body_rect.bottomleft, 2)
+            pygame.draw.line(self.image, outline_color, body_rect.topright, body_rect.bottomright, 2)
+            
+            # Bottom Curve Outline (Half ellipse)
+            pygame.draw.arc(self.image, outline_color, bottom_rect, math.pi, 0, 2)
+            
+            # 2. Draw Top Face
+            pygame.draw.ellipse(self.image, fill_color, top_rect)
+            pygame.draw.ellipse(self.image, outline_color, top_rect, 2)
+            
+            # Highlight on top face (small white ellipse or arc)
+            highlight_rect = top_rect.inflate(-10, -6)
+            highlight_rect.y += 2
+            # pygame.draw.ellipse(self.image, (255, 255, 255, 100), highlight_rect)
+            
     def update(self):
-        # Static coin - no animations for now
-        # Sparkle effects removed for simplicity with tinting system
+        # Simple floating animation?
         pass
 
     def trigger_sparkle(self):
-        # Placeholder for future animation
         pass
