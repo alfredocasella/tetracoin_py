@@ -80,6 +80,11 @@ jobs:
           rm -rf .buildozer/android/app
           rm -rf ~/.buildozer/android/platform/android-sdk
 
+      - name: Install Android SDK components
+        run: |
+          mkdir -p ~/.buildozer/android/platform/android-sdk
+          yes | ${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager --sdk_root=$HOME/.buildozer/android/platform/android-sdk "platforms;android-34" "build-tools;34.0.0" "platform-tools"
+
       - name: Build Android APK
         timeout-minutes: 120
         run: |
