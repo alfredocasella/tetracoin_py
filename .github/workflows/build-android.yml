@@ -44,7 +44,12 @@ jobs:
             ant \
             cython3 \
             libffi-dev \
-            libssl-dev
+            libssl-dev \
+            autoconf \
+            automake \
+            libtool \
+            pkg-config \
+            zlib1g-dev
 
       - name: Install Python dependencies
         run: |
