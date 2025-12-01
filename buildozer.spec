@@ -75,10 +75,10 @@ fullscreen = 0
 #android.permissions = INTERNET
 
 # (int) Target Android API, should be as high as possible.
-#android.api = 27
+android.api = 34
 
 # (int) Minimum API your APK will support.
-#android.minapi = 21
+android.minapi = 24
 
 # (int) Android SDK version to use
 #android.sdk = 20
@@ -97,6 +97,9 @@ fullscreen = 0
 
 # (str) Android additional adb arguments
 #android.adb_args = -H 127.0.0.1 -P 5037
+
+# (bool) Accept SDK license
+android.accept_sdk_license = True
 
 # (str) XML file to include as an intent filters in <activity> tag
 #android.manifest.intent_filters = intent_filters.xml
