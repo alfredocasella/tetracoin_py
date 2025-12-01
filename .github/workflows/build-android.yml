@@ -81,6 +81,7 @@ jobs:
       - name: Build Android APK
         timeout-minutes: 120
         run: |
+          set -o pipefail
           buildozer -v android debug 2>&1 | tee build.log
         env:
           BUILDOZER_LOG_LEVEL: 2
