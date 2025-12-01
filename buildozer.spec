@@ -13,7 +13,7 @@ package.domain = org.tetracoin
 source.dir = .
 
 # (list) Source files to include (let empty to include all the files)
-source.include_exts = py,png,jpg,kv,atlas,wav,mp3,ogg
+source.include_exts = py,png,jpg,kv,atlas,wav,mp3,ogg,json
 
 # (list) List of inclusions using pattern matching
 #source.include_patterns = assets/*,images/*.png
@@ -90,7 +90,7 @@ android.minapi = 24
 #android.ndk_api = 21
 
 # (bool) Use --private data storage (True) or --dir public storage (False)
-#android.private_storage = True
+android.private_storage = True
 
 # (str) Android logcat filters to use
 #android.logcat_filters = *:S python:D
