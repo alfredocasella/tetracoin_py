@@ -1,10 +1,17 @@
-jobs:         # Livello 0: Tutti i workflow hanno dei jobs
-  build:      # Livello 1: Nome del job (potrebbe essere "test" o "deploy")
-    runs-on: ubuntu-latest # Livello 2: Indica su quale macchina virtuale deve girare
-    
-    steps:    # Livello 2: Contiene tutti i passaggi del job
+name: Build Android APK
 
-steps:
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
 - uses: actions/checkout@v4 # Aggiornato anche actions/checkout per buona norma
 
 - name: Set up Python

@@ -229,6 +229,9 @@ class BlockSprite(pygame.sprite.Sprite):
                 self.rect.y = self.target_y
 
 class CoinSprite(pygame.sprite.Sprite):
+    # Class-level cache for base sprite
+    _base_sprite = None
+    
     def __init__(self, coin_data, groups, grid_offsets=None):
         super().__init__(groups)
         self.coin_data = coin_data
@@ -239,105 +242,111 @@ class CoinSprite(pygame.sprite.Sprite):
         self.offset_x = grid_offsets[0] if grid_offsets else GRID_OFFSET_X
         self.offset_y = grid_offsets[1] if grid_offsets else GRID_OFFSET_Y
         
-        # Debug print to verify offsets
-        # print(f"Coin spawned at {self.grid_x},{self.grid_y} with offsets {self.offset_x},{self.offset_y}")
-        
         self.base_size = TILE_SIZE
         self.image = pygame.Surface((self.base_size, self.base_size), pygame.SRCALPHA)
-        self.base_image = pygame.Surface((self.base_size, self.base_size), pygame.SRCALPHA)
         self.rect = self.image.get_rect()
         
-        # Set initial position
+        # Set initial position with Y offset for 3D effect
+        y_offset = -4  # Slightly above cell for stacked effect
         self.rect.x = self.offset_x + self.grid_x * TILE_SIZE
-        self.rect.y = self.offset_y + self.grid_y * TILE_SIZE
+        self.rect.y = self.offset_y + self.grid_y * TILE_SIZE + y_offset
         
         # Animation state
         self.original_y = self.rect.y
         self.pulse_time = 0
+        self.sparkle_timer = 0
         
-        self._create_3d_coin()
-        self.update()
+        # Load and apply color tinting
+        self._apply_color_tint()
         
-    def _create_3d_coin(self):
-        """Create a Coin matching Web Prototype style"""
-        # Clear surface
-        self.base_image.fill((0,0,0,0))
+    def _load_base_sprite(self):
+        """Load the greyscale base sprite (cached at class level)"""
+        if CoinSprite._base_sprite is None:
+            asset_path = os.path.join(os.path.dirname(__file__), 'assets', 'coin_stack_base.png')
+            
+            if os.path.exists(asset_path):
+                # Load from PNG
+                loaded_sprite = pygame.image.load(asset_path).convert_alpha()
+                CoinSprite._base_sprite = pygame.transform.scale(loaded_sprite, (self.base_size, self.base_size))
+            else:
+                # Fallback: generate procedurally if asset doesn't exist
+                print(f"Warning: {asset_path} not found, generating procedurally")
+                CoinSprite._base_sprite = self._generate_greyscale_sprite()
+                
+        return CoinSprite._base_sprite
+    
+    def _generate_greyscale_sprite(self):
+        """Fallback: Generate greyscale sprite procedurally"""
+        sprite = pygame.Surface((self.base_size, self.base_size), pygame.SRCALPHA)
+        sprite.fill((0, 0, 0, 0))
         
-        center = self.base_size // 2
-        # Reduce radius to fit inside cell with padding
-        # Cell is TILE_SIZE - 4. Coin should be smaller.
-        # Let's make it TILE_SIZE - 12 (6px padding on each side)
-        radius = (self.base_size - 12) // 2
+        center_x = self.base_size // 2
+        disc_radius = (self.base_size - 8) // 2
+        num_discs = 6
+        disc_thickness = 2
+        disc_spacing = 2
+        base_y = self.base_size - 4
         
-        # Get colors
-        color_key = self.coin_data['color']
-        colors = COIN_COLORS.get(color_key, COIN_COLORS['YELLOW'])
-        fill_color = colors['fill']
-        border_color = colors['border']
+        # Greyscale colors
+        light_grey = (200, 200, 200)
+        dark_grey = (100, 100, 100)
+        white = (255, 255, 255)
         
         # Shadow
-        shadow_rect = pygame.Rect(center - radius, center - radius + 4, radius * 2, radius * 2)
-        pygame.draw.circle(self.base_image, (0, 0, 0, 40), (center, center + 4), radius)
+        shadow_rect = pygame.Rect(center_x - disc_radius - 1, base_y + 1,
+                                  disc_radius * 2 + 2, 4)
+        pygame.draw.ellipse(sprite, (40, 40, 40, 150), shadow_rect)
         
-        # Main Body (Circle)
-        pygame.draw.circle(self.base_image, fill_color, (center, center), radius)
+        # Draw discs
+        for i in range(num_discs):
+            disc_y = base_y - (i * (disc_thickness + disc_spacing))
+            
+            # Edge
+            edge_rect = pygame.Rect(center_x - disc_radius, disc_y,
+                                   disc_radius * 2, disc_thickness)
+            pygame.draw.rect(sprite, dark_grey, edge_rect)
+            pygame.draw.circle(sprite, dark_grey,
+                             (center_x - disc_radius, disc_y + disc_thickness // 2),
+                             disc_thickness // 2)
+            pygame.draw.circle(sprite, dark_grey,
+                             (center_x + disc_radius, disc_y + disc_thickness // 2),
+                             disc_thickness // 2)
+            
+            # Top face
+            top_y = disc_y - 1
+            top_rect = pygame.Rect(center_x - disc_radius, top_y,
+                                  disc_radius * 2, disc_thickness + 2)
+            pygame.draw.ellipse(sprite, light_grey, top_rect)
+            pygame.draw.ellipse(sprite, white, top_rect, 1)
         
-        # Border
-        pygame.draw.circle(self.base_image, border_color, (center, center), radius, 3)
+        return sprite
+    
+    def _apply_color_tint(self):
+        """Apply color tint to greyscale base sprite"""
+        # Load base sprite
+        base_sprite = self._load_base_sprite()
         
-        # Radial Gradient Simulation (Light top-left, Dark bottom-right)
-        # Highlight
-        pygame.draw.circle(self.base_image, (255, 255, 255), (center - radius//3, center - radius//3), radius//3)
+        # Create tinted version
+        self.image = base_sprite.copy()
         
-        # Sparkle Icon (Cross)
-        sparkle_color = border_color
-        cx, cy = center, center
-        size = radius * 0.5
+        # Get tint color from coin data
+        color_key = self.coin_data['color']
+        colors = COIN_COLORS.get(color_key, COIN_COLORS['YELLOW'])
+        tint_color = colors['fill']
         
-        # Draw star
-        points = [
-            (cx, cy - size), (cx + size * 0.2, cy - size * 0.2),
-            (cx + size, cy), (cx + size * 0.2, cy + size * 0.2),
-            (cx, cy + size), (cx - size * 0.2, cy + size * 0.2),
-            (cx - size, cy), (cx - size * 0.2, cy - size * 0.2)
-        ]
-        pygame.draw.polygon(self.base_image, sparkle_color, points)
+        # Apply tint using RGBA multiply blend
+        # Create a tint surface
+        tint_surface = pygame.Surface((self.base_size, self.base_size), pygame.SRCALPHA)
+        tint_surface.fill((*tint_color, 255))
+        
+        # Apply multiplicative blend to tint the sprite
+        self.image.blit(tint_surface, (0, 0), special_flags=pygame.BLEND_RGBA_MULT)
         
     def update(self):
-        # Static position (No bouncing)
-        # Just handle sparkle effect
-        
-        # Randomly trigger sparkle
-        import random
-        if random.random() < 0.02: # 2% chance per frame
-            self.trigger_sparkle()
-            
-        # Draw sparkle if active
-        if hasattr(self, 'sparkle_timer') and self.sparkle_timer > 0:
-            self.sparkle_timer -= 1
-            
-            # Re-draw base coin first to clear previous sparkle frame
-            self.image = self.base_image.copy()
-            
-            # Draw sparkle
-            center = self.base_size // 2
-            radius = self.base_size // 3
-            
-            # Sparkle position (top right usually looks good)
-            sx = center + radius // 2
-            sy = center - radius // 2
-            
-            # Pulsing size
-            size = 4 + (10 - abs(10 - self.sparkle_timer)) // 2
-            
-            # Draw star/cross shape
-            white = (255, 255, 255)
-            pygame.draw.line(self.image, white, (sx - size, sy), (sx + size, sy), 2)
-            pygame.draw.line(self.image, white, (sx, sy - size), (sx, sy + size), 2)
-        else:
-            # Ensure image is clean
-            if self.image != self.base_image:
-                self.image = self.base_image.copy()
+        # Static coin - no animations for now
+        # Sparkle effects removed for simplicity with tinting system
+        pass
 
     def trigger_sparkle(self):
-        self.sparkle_timer = 20 # Frames to show sparkle_offset
+        # Placeholder for future animation
+        pass

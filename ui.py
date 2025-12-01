@@ -77,10 +77,10 @@ class UI:
         
         time_color = TEXT_COLOR
         if timer_state == "WARNING": 
-            time_color = COLOR_WARNING_ORANGE
+            time_color = BLOCK_COLORS['ORANGE']['main']
             pulse_scale = 1.0
         elif timer_state == "CRITICAL": 
-            time_color = COLOR_ERROR_RED
+            time_color = BLOCK_COLORS['RED']['main']
             # Pulse animation for critical state
             pulse_scale = 1.0 + 0.1 * math.sin(self.timer_pulse_time * 10)
         else:
@@ -409,7 +409,7 @@ class UI:
             
             # Gold earned highlight - ensure it fits
             if gold_earned > 0:
-                gold_text = self.font_medium.render(f"+{gold_earned} Gold!", True, COLOR_WARNING_ORANGE)
+                gold_text = self.font_medium.render(f"+{gold_earned} Gold!", True, BLOCK_COLORS['YELLOW']['main'])
                 gold_y = min(card_rect.bottom - 40, SCREEN_HEIGHT - 100)
                 gold_rect = gold_text.get_rect(center=(SCREEN_WIDTH // 2, gold_y))
                 screen.blit(gold_text, gold_rect)
@@ -451,7 +451,7 @@ class UI:
         pygame.draw.rect(screen, COLOR_WHITE, card_rect, border_radius=16)
         
         # Header
-        header_text = self.font_large.render("LIVELLO FALLITO", True, COLOR_ERROR_RED)
+        header_text = self.font_large.render("LIVELLO FALLITO", True, BLOCK_COLORS['RED']['main'])
         header_rect = header_text.get_rect(center=(SCREEN_WIDTH // 2, card_rect.top + 60))
         screen.blit(header_text, header_rect)
         
