@@ -5,8 +5,8 @@
     "tetra_gold": 545,
     "current_world": 1,
     "unlocked_levels": 25,
-    "total_moves": 2192,
-    "total_time_played": 1398.2290000000003
+    "total_moves": 2391,
+    "total_time_played": 1643.3870000000006
   },
   "levels": {
     "1": {
@@ -14,28 +14,28 @@
       "stars": 3,
       "best_moves": 0,
       "best_time": 0.0,
-      "attempts": 44
+      "attempts": 52
     },
     "2": {
       "completed": true,
       "stars": 3,
       "best_moves": 4,
       "best_time": 3.144,
-      "attempts": 28
+      "attempts": 32
     },
     "3": {
       "completed": true,
       "stars": 3,
       "best_moves": 8,
       "best_time": 2.905,
-      "attempts": 25
+      "attempts": 29
     },
     "4": {
       "completed": true,
       "stars": 3,
       "best_moves": 3,
       "best_time": 1.558,
-      "attempts": 19
+      "attempts": 23
     },
     "5": {
       "completed": true,

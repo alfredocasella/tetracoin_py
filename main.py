@@ -1,7 +1,7 @@
 import pygame
 import sys
-from settings import *
-from game import Game
+from core.settings import *
+from core.game import Game
 
 def main():
     pygame.init()
