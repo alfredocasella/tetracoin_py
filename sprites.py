@@ -24,13 +24,14 @@ SHAPES = {
 }
 
 class BlockSprite(pygame.sprite.Sprite):
-    def __init__(self, block_data, groups, grid_offsets=None):
+    def __init__(self, block_data, groups, grid_offsets=None, tile_size=TILE_SIZE):
         super().__init__(groups)
         self.block_data = block_data
         self.grid_x, self.grid_y = block_data['start_pos']
         self.counter = block_data['count']
         self.shape_name = block_data.get('shape', 'I2')
         self.shape_cells = SHAPES.get(self.shape_name, [(0, 0)])  # Get shape or default to single cell
+        self.tile_size = tile_size
         
         # Use provided offsets or fallback to settings
         self.offset_x = grid_offsets[0] if grid_offsets else GRID_OFFSET_X
@@ -43,8 +44,11 @@ class BlockSprite(pygame.sprite.Sprite):
         # Calculate bounding box for the entire shape
         max_x = max(cell[0] for cell in self.shape_cells)
         max_y = max(cell[1] for cell in self.shape_cells)
-        self.width = (max_x + 1) * TILE_SIZE
-        self.height = (max_y + 1) * TILE_SIZE
+        # Calculate bounding box for the entire shape
+        max_x = max(cell[0] for cell in self.shape_cells)
+        max_y = max(cell[1] for cell in self.shape_cells)
+        self.width = (max_x + 1) * self.tile_size
+        self.height = (max_y + 1) * self.tile_size
         
         # Load sprite or create primitive
         self.sprite_image = None
@@ -52,7 +56,7 @@ class BlockSprite(pygame.sprite.Sprite):
         if os.path.exists(sprite_path):
             try:
                 self.sprite_image = pygame.image.load(sprite_path)
-                self.sprite_image = pygame.transform.scale(self.sprite_image, (TILE_SIZE, TILE_SIZE))
+                self.sprite_image = pygame.transform.scale(self.sprite_image, (self.tile_size, self.tile_size))
             except:
                 pass
         
@@ -60,8 +64,9 @@ class BlockSprite(pygame.sprite.Sprite):
         self.rect = self.image.get_rect()
         
         # CRITICAL: Set position BEFORE update_appearance
-        self.target_x = self.offset_x + self.grid_x * TILE_SIZE
-        self.target_y = self.offset_y + self.grid_y * TILE_SIZE
+        # CRITICAL: Set position BEFORE update_appearance
+        self.target_x = self.offset_x + self.grid_x * self.tile_size
+        self.target_y = self.offset_y + self.grid_y * self.tile_size
         self.rect.x = self.target_x
         self.rect.y = self.target_y
         
@@ -111,12 +116,12 @@ class BlockSprite(pygame.sprite.Sprite):
         
         # Pass 1: Draw Walls (Base)
         for dx, dy in self.shape_cells:
-            cell_x = dx * TILE_SIZE
-            cell_y = dy * TILE_SIZE
+            cell_x = dx * self.tile_size
+            cell_y = dy * self.tile_size
             
             # Draw full cell in wall color
             # We add a small overlap to merge adjacent cells visually
-            rect = pygame.Rect(cell_x, cell_y, TILE_SIZE, TILE_SIZE)
+            rect = pygame.Rect(cell_x, cell_y, self.tile_size, self.tile_size)
             pygame.draw.rect(self.image, wall_color, rect)
             
         # Pass 2: Draw Floor (Inner Dark Part)
@@ -125,15 +130,15 @@ class BlockSprite(pygame.sprite.Sprite):
         # So we draw the floor in the center of each cell, and connect them if neighbors exist.
         
         for dx, dy in self.shape_cells:
-            cell_x = dx * TILE_SIZE
-            cell_y = dy * TILE_SIZE
+            cell_x = dx * self.tile_size
+            cell_y = dy * self.tile_size
             
             # Inner rect for this cell
             inner_rect = pygame.Rect(
                 cell_x + wall_thickness, 
                 cell_y + wall_thickness, 
-                TILE_SIZE - 2 * wall_thickness, 
-                TILE_SIZE - 2 * wall_thickness
+                self.tile_size - 2 * wall_thickness, 
+                self.tile_size - 2 * wall_thickness
             )
             pygame.draw.rect(self.image, floor_color, inner_rect)
             
@@ -169,12 +174,12 @@ class BlockSprite(pygame.sprite.Sprite):
         # Top/Left edges of walls could be lighter
         highlight_color = (255, 255, 255, 100)
         for dx, dy in self.shape_cells:
-            cell_x = dx * TILE_SIZE
-            cell_y = dy * TILE_SIZE
+            cell_x = dx * self.tile_size
+            cell_y = dy * self.tile_size
             
             # If no top neighbor, draw highlight on top wall
             if (dx, dy - 1) not in self.shape_cells:
-                pygame.draw.rect(self.image, highlight_color, (cell_x, cell_y, TILE_SIZE, 3))
+                pygame.draw.rect(self.image, highlight_color, (cell_x, cell_y, self.tile_size, 3))
                 
         # Pass 4: Number Badge (White square in corner)
         # Find the "last" cell or a specific corner (e.g., bottom-right most)
@@ -183,8 +188,8 @@ class BlockSprite(pygame.sprite.Sprite):
         
         if self.counter > 0:
             badge_size = 20
-            bx = target_cell[0] * TILE_SIZE + TILE_SIZE - badge_size - 4
-            by = target_cell[1] * TILE_SIZE + TILE_SIZE - badge_size - 4
+            bx = target_cell[0] * self.tile_size + self.tile_size - badge_size - 4
+            by = target_cell[1] * self.tile_size + self.tile_size - badge_size - 4
             
             # White rounded rect
             badge_rect = pygame.Rect(bx, by, badge_size, badge_size)
@@ -216,8 +221,8 @@ class BlockSprite(pygame.sprite.Sprite):
         # Smooth movement to target position
         # If dragging, position is set by mouse
         if not self.dragging:
-            self.target_x = self.offset_x + self.grid_x * TILE_SIZE
-            self.target_y = self.offset_y + self.grid_y * TILE_SIZE
+            self.target_x = self.offset_x + self.grid_x * self.tile_size
+            self.target_y = self.offset_y + self.grid_y * self.tile_size
             
             # Simple lerp or direct set
             self.rect.x += (self.target_x - self.rect.x) * 0.5
@@ -232,7 +237,7 @@ class CoinSprite(pygame.sprite.Sprite):
     # Class-level cache for base sprite
     _base_sprite = None
     
-    def __init__(self, coin_data, groups, grid_offsets=None):
+    def __init__(self, coin_data, groups, grid_offsets=None, tile_size=TILE_SIZE):
         super().__init__(groups)
         self.coin_data = coin_data
         self.grid_x, self.grid_y = coin_data['pos']
@@ -241,7 +246,7 @@ class CoinSprite(pygame.sprite.Sprite):
         self.offset_x = grid_offsets[0] if grid_offsets else GRID_OFFSET_X
         self.offset_y = grid_offsets[1] if grid_offsets else GRID_OFFSET_Y
         
-        self.base_size = TILE_SIZE
+        self.base_size = tile_size
         # Increase height to accommodate the stack
         self.image = pygame.Surface((self.base_size, self.base_size + 20), pygame.SRCALPHA)
         self.rect = self.image.get_rect()
@@ -249,9 +254,15 @@ class CoinSprite(pygame.sprite.Sprite):
         # Set initial position
         # Adjust Y to align the bottom of the stack with the cell bottom
         # The stack grows upwards, so the "base" of the stack should be at the cell's bottom area
-        self.rect.x = self.offset_x + self.grid_x * TILE_SIZE
+        self.rect.x = self.offset_x + self.grid_x * self.base_size
         # Shift up slightly to center the visual weight or align bottom
-        self.rect.y = self.offset_y + self.grid_y * TILE_SIZE - 15 
+        # We want the bottom of the coin stack (at bottom_y in _generate) to align with cell bottom
+        # In _generate, bottom_y = height - 10.
+        # So visual bottom is at rect.y + height - 10.
+        # We want visual bottom at offset_y + (grid_y + 1) * tile_size - padding
+        # Let's just center it horizontally and align bottom with some padding
+        
+        self.rect.y = self.offset_y + self.grid_y * self.base_size - 15 
         
         # Animation state
         self.original_y = self.rect.y

@@ -7,11 +7,11 @@
       7,
       7
     ],
-    "time_limit": 75,
+    "time_limit": 90,
     "stars": [
-      3,
-      5,
-      10
+      4,
+      6,
+      12
     ]
   },
   "layout": [
@@ -64,14 +64,14 @@
       0,
       0,
       0,
-      1,
+      0,
       0,
       0,
       0
     ],
     [
       0,
-      1,
+      0,
       0,
       0,
       0,
@@ -82,22 +82,22 @@
   "blocks": [
     {
       "id": "b_0",
-      "shape": "T4",
+      "shape": "L3",
       "color": "red",
-      "counter": 2,
+      "counter": 3,
       "xy": [
-        3,
-        1
+        0,
+        0
       ]
     },
     {
       "id": "b_1",
-      "shape": "T4",
+      "shape": "S4",
       "color": "blue",
-      "counter": 2,
+      "counter": 3,
       "xy": [
         3,
-        4
+        2
       ]
     }
   ],
@@ -106,28 +106,42 @@
       {
         "color": "red",
         "xy": [
-          3,
-          2
+          1,
+          6
         ]
       },
       {
         "color": "red",
         "xy": [
-          6,
-          1
+          0,
+          3
+        ]
+      },
+      {
+        "color": "red",
+        "xy": [
+          0,
+          4
         ]
       },
       {
         "color": "blue",
         "xy": [
           2,
-          1
+          5
         ]
       },
       {
         "color": "blue",
         "xy": [
           6,
+          2
+        ]
+      },
+      {
+        "color": "blue",
+        "xy": [
+          5,
           4
         ]
       }

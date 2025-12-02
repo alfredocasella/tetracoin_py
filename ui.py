@@ -470,3 +470,36 @@ class UI:
         inst_text = self.font_tiny.render("Premi R per riprovare", True, TEXT_COLOR)
         inst_rect = inst_text.get_rect(center=(SCREEN_WIDTH // 2, card_rect.bottom - 40))
         screen.blit(inst_text, inst_rect)
+    def draw_tutorial(self, screen, text):
+        """Draw tutorial text overlay"""
+        # Semi-transparent background at the bottom
+        overlay_height = 100
+        overlay_rect = pygame.Rect(0, SCREEN_HEIGHT - BOTTOM_BAR_HEIGHT - overlay_height - 20, SCREEN_WIDTH, overlay_height)
+        
+        # Draw background with border
+        s = pygame.Surface((SCREEN_WIDTH, overlay_height), pygame.SRCALPHA)
+        s.fill((0, 0, 0, 180)) # Dark semi-transparent
+        screen.blit(s, overlay_rect.topleft)
+        
+        # Draw text
+        # Wrap text if needed (simple wrapping)
+        words = text.split(' ')
+        lines = []
+        current_line = []
+        
+        for word in words:
+            test_line = ' '.join(current_line + [word])
+            if self.font_small.size(test_line)[0] < SCREEN_WIDTH - 40:
+                current_line.append(word)
+            else:
+                lines.append(' '.join(current_line))
+                current_line = [word]
+        lines.append(' '.join(current_line))
+        
+        # Render lines
+        y = overlay_rect.centery - (len(lines) * 24) // 2
+        for line in lines:
+            text_surf = self.font_small.render(line, True, (255, 255, 255))
+            text_rect = text_surf.get_rect(center=(SCREEN_WIDTH // 2, y))
+            screen.blit(text_surf, text_rect)
+            y += 24

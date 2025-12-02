@@ -71,8 +71,19 @@ class Game:
         self.grid_manager._game_ref = self  # Store reference for coin collision check
         
         # Calculate dynamic grid offset to center it in the GRID_AREA
-        grid_pixel_width = self.level_data['grid_cols'] * TILE_SIZE
-        grid_pixel_height = self.level_data['grid_rows'] * TILE_SIZE
+        # Dynamic Tile Size Calculation
+        max_grid_width = SCREEN_WIDTH - 20 # 10px margin on each side
+        max_grid_height = GRID_AREA_HEIGHT - 20 # 10px margin top/bottom
+        
+        # Calculate max possible tile size to fit width and height
+        tile_size_w = max_grid_width // self.level_data['grid_cols']
+        tile_size_h = max_grid_height // self.level_data['grid_rows']
+        
+        # Use the smaller of the two, but cap at default TILE_SIZE
+        self.tile_size = min(TILE_SIZE, tile_size_w, tile_size_h)
+        
+        grid_pixel_width = self.level_data['grid_cols'] * self.tile_size
+        grid_pixel_height = self.level_data['grid_rows'] * self.tile_size
         
         # Center horizontally
         global GRID_OFFSET_X, GRID_OFFSET_Y
@@ -90,7 +101,7 @@ class Game:
         # Create Block Sprites
         for block_data in self.level_data['blocks']:
             block = BlockSprite(block_data, [self.all_sprites, self.block_sprites], 
-                              grid_offsets=(GRID_OFFSET_X, GRID_OFFSET_Y))
+                              grid_offsets=(GRID_OFFSET_X, GRID_OFFSET_Y), tile_size=self.tile_size)
             
             # Validate block fits within grid
             for cell_x, cell_y in block.get_occupied_cells():
@@ -111,12 +122,12 @@ class Game:
              # Legacy format
              for coin_data in coins_data:
                 CoinSprite(coin_data, [self.all_sprites, self.coin_sprites],
-                         grid_offsets=(GRID_OFFSET_X, GRID_OFFSET_Y))
+                         grid_offsets=(GRID_OFFSET_X, GRID_OFFSET_Y), tile_size=self.tile_size)
         else:
             # New format
             for coin_data in coins_data.get('static', []):
                 CoinSprite(coin_data, [self.all_sprites, self.coin_sprites],
-                         grid_offsets=(GRID_OFFSET_X, GRID_OFFSET_Y))
+                         grid_offsets=(GRID_OFFSET_X, GRID_OFFSET_Y), tile_size=self.tile_size)
             
             for queue_data in coins_data.get('queues', []):
                 # Deep copy to avoid modifying level data
@@ -185,7 +196,7 @@ class Game:
             # Space free: Spawn normally
             color = queue['items'].pop(0)
             CoinSprite({'color': color, 'pos': pos}, [self.all_sprites, self.coin_sprites],
-                     grid_offsets=(GRID_OFFSET_X, GRID_OFFSET_Y))
+                     grid_offsets=(GRID_OFFSET_X, GRID_OFFSET_Y), tile_size=self.tile_size)
 
     def check_pending_spawns(self):
         # Check all queues to see if they can spawn now
@@ -266,8 +277,8 @@ class Game:
                 if event.button == 1: # Left click
                     mx, my = pygame.mouse.get_pos()
                     # Convert to grid coordinates
-                    gx = (mx - GRID_OFFSET_X) // TILE_SIZE
-                    gy = (my - GRID_OFFSET_Y) // TILE_SIZE
+                    gx = (mx - GRID_OFFSET_X) // self.tile_size
+                    gy = (my - GRID_OFFSET_Y) // self.tile_size
                     
                     clicked_block = None
                     if self.grid_manager.is_valid_pos(gx, gy):
@@ -287,6 +298,8 @@ class Game:
                         # Clicked empty space or wall
                         if self.selected_block and not self.selected_block.dragging:
                             # Check if adjacent (Click to Move logic)
+                            self.target_x = self.offset_x + self.grid_x * self.tile_size
+                            self.target_y = self.offset_y + self.grid_y * self.tile_size                           
                             dx = gx - self.selected_block.grid_x
                             dy = gy - self.selected_block.grid_y
                             
@@ -310,8 +323,8 @@ class Game:
                         center_x = self.selected_block.rect.centerx
                         center_y = self.selected_block.rect.centery
                         
-                        drop_gx = (center_x - GRID_OFFSET_X) // TILE_SIZE
-                        drop_gy = (center_y - GRID_OFFSET_Y) // TILE_SIZE
+                        drop_gx = (center_x - GRID_OFFSET_X) // self.tile_size
+                        drop_gy = (center_y - GRID_OFFSET_Y) // self.tile_size
                         
                         dx = drop_gx - self.selected_block.grid_x
                         dy = drop_gy - self.selected_block.grid_y
@@ -338,8 +351,8 @@ class Game:
                     # Calculate preview position for ghost
                     center_x = self.selected_block.rect.centerx
                     center_y = self.selected_block.rect.centery
-                    preview_gx = (center_x - GRID_OFFSET_X) // TILE_SIZE
-                    preview_gy = (center_y - GRID_OFFSET_Y) // TILE_SIZE
+                    preview_gx = (center_x - GRID_OFFSET_X) // self.tile_size
+                    preview_gy = (center_y - GRID_OFFSET_Y) // self.tile_size
                     
                     # Check if preview position is valid
                     dx_preview = preview_gx - self.selected_block.grid_x
@@ -552,6 +565,10 @@ class Game:
             # The level_complete flag triggers state change in update()
             if self.is_deadlocked:
                 self.ui.draw_message(screen, "No valid moves! Press R to restart.")
+                
+            # Draw Tutorial Text if present
+            if self.state == self.STATE_PLAY and self.level_data.get('tutorial_text'):
+                self.ui.draw_tutorial(screen, self.level_data['tutorial_text'])
 
     def draw_preview_ghost(self, screen, block, preview_pos, is_valid):
         """Draw ghost preview of block at preview position"""
@@ -563,12 +580,12 @@ class Game:
         
         # Draw each cell of the block shape at preview position
         gap = 4
-        cell_size = TILE_SIZE - gap
+        cell_size = self.tile_size - gap
         offset = gap // 2
         
         for dx, dy in block.shape_cells:
-            cell_x = GRID_OFFSET_X + (preview_gx + dx) * TILE_SIZE + offset
-            cell_y = GRID_OFFSET_Y + (preview_gy + dy) * TILE_SIZE + offset
+            cell_x = GRID_OFFSET_X + (preview_gx + dx) * self.tile_size + offset
+            cell_y = GRID_OFFSET_Y + (preview_gy + dy) * self.tile_size + offset
             
             # Create semi-transparent surface
             ghost_surface = pygame.Surface((cell_size, cell_size), pygame.SRCALPHA)
@@ -581,8 +598,8 @@ class Game:
         cols = self.level_data['grid_cols']
         rows = self.level_data['grid_rows']
         
-        grid_width = cols * TILE_SIZE
-        grid_height = rows * TILE_SIZE
+        grid_width = cols * self.tile_size
+        grid_height = rows * self.tile_size
         grid_rect = pygame.Rect(GRID_OFFSET_X, GRID_OFFSET_Y, grid_width, grid_height)
         
         # Mockup Style: "Tray"
@@ -611,11 +628,11 @@ class Game:
         # Draw static elements (Walls, Voids, Empty Cells)
         for row in range(rows):
             for col in range(cols):
-                x = GRID_OFFSET_X + col * TILE_SIZE
-                y = GRID_OFFSET_Y + row * TILE_SIZE
+                x = GRID_OFFSET_X + col * self.tile_size
+                y = GRID_OFFSET_Y + row * self.tile_size
                 
                 cell_value = self.level_data['layout'][row][col]
-                rect = pygame.Rect(x, y, TILE_SIZE, TILE_SIZE)
+                rect = pygame.Rect(x, y, self.tile_size, self.tile_size)
                 
                 # Shrink rect slightly for "gap-1" effect (4px gap)
                 gap = 2

@@ -7,7 +7,7 @@
       6,
       6
     ],
-    "time_limit": 65,
+    "time_limit": 70,
     "stars": [
       2,
       3,
@@ -67,24 +67,17 @@
   "blocks": [
     {
       "id": "b_0",
-      "shape": "I3",
+      "shape": "L4",
       "color": "red",
       "counter": 3,
       "xy": [
-        2,
+        3,
         2
       ]
     }
   ],
   "coins": {
     "static": [
-      {
-        "color": "red",
-        "xy": [
-          4,
-          3
-        ]
-      },
       {
         "color": "red",
         "xy": [
@@ -96,10 +89,18 @@
         "color": "red",
         "xy": [
           2,
-          4
+          2
+        ]
+      },
+      {
+        "color": "red",
+        "xy": [
+          2,
+          5
         ]
       }
     ],
     "entrances": []
-  }
+  },
+  "tutorial_text": "Drag the block to collect all coins! Match colors."
 }
