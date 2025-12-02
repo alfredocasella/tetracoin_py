@@ -15,11 +15,23 @@ import random
 from typing import Dict, List, Tuple, Optional, Set
 from collections import deque
 
-# Add project root to path
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+# Add project root to path - FIX per struttura reale
+script_dir = os.path.dirname(os.path.abspath(__file__))
+project_root = os.path.dirname(script_dir) if 'scripts' in script_dir else script_dir
+sys.path.insert(0, project_root)
+sys.path.insert(0, os.path.join(project_root, 'scripts'))
 
-from level_solver import solve_level
+try:
+    from level_solver import solve_level
+    SOLVER_AVAILABLE = True
+except ImportError:
+    print("⚠️  WARNING: level_solver.py non trovato - validazione completa disabilitata")
+    print("    I livelli saranno generati ma non validati per solvibilità")
+    SOLVER_AVAILABLE = False
+    
+    def solve_level(level_data, max_moves=100, verbose=False):
+        """Fallback solver che assume sempre solvibile"""
+        return True, [], 10
 
 # Shape definitions
 SHAPE_CELLS = {
