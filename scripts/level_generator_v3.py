@@ -44,13 +44,17 @@ SHAPE_CELLS = {
     'T4': [(0, 0), (1, 0), (2, 0), (1, 1)],
     'S4': [(1, 0), (2, 0), (0, 1), (1, 1)],
     'Z4': [(0, 0), (1, 0), (1, 1), (2, 1)],
+    'J4': [(1, 0), (2, 0), (1, 1), (1, 2)],  # Forma J (nuova)
 }
 
 COLORS = ['RED', 'BLUE', 'GREEN', 'YELLOW', 'PURPLE', 'ORANGE']
 
-# Forme preferite per livelli iniziali (più semplici)
+# Forme semplici (per livelli 1-5)
 SIMPLE_SHAPES = ['I2', 'I3', 'L3', 'O4']
-COMPLEX_SHAPES = ['I4', 'L4', 'T4', 'S4', 'Z4']
+# Forme complesse (per livelli 6-20) - PRIORITÀ ALTA
+COMPLEX_SHAPES = ['L4', 'T4', 'S4', 'Z4', 'J4', 'O4']  # 60%+ di queste
+# Forme MOLTO complesse (no forme lineari)
+VERY_COMPLEX_SHAPES = ['L4', 'T4', 'S4', 'Z4', 'J4']  # Esclude I2, I3, I4
 
 
 class SmartGridAnalyzer:
@@ -116,42 +120,53 @@ class DifficultyProgression:
         self.difficulty_curve = self._build_difficulty_curve()
     
     def _build_difficulty_curve(self) -> Dict[int, Dict]:
-        """Curva di difficoltà OTTIMIZZATA con griglie più grandi"""
+        """Curva di difficoltà REWORK 5.0 - Massima Rigidità e Dinamicità"""
         curve = {}
         
-        # Livelli 1-10: Tutorial - GRIGLIE PIÙ GRANDI
-        for i in range(1, 11):
-            if i == 1:
-                curve[i] = {
-                    "blocks": 1,
-                    "coins_per_block": 2,
-                    "grid": (6, 6),
-                    "walls": 0.0,
-                    "target_moves": (2, 5),
-                    "tutorial": True,
-                    "shapes": SIMPLE_SHAPES
-                }
-            elif i <= 3:
-                curve[i] = {
-                    "blocks": 1 + (i - 1) // 2,
-                    "coins_per_block": 2 + (i - 1) // 2,
-                    "grid": (7, 7),  # Aumentata da 6x6
-                    "walls": 0.0,
-                    "target_moves": (3 + i, 6 + i * 2),
-                    "shapes": SIMPLE_SHAPES
-                }
-            else:
-                # Dal livello 4: GRIGLIA MOLTO PIÙ GRANDE per 4 blocchi
-                curve[i] = {
-                    "blocks": min(3, 2 + (i - 4) // 3),  # Crescita graduale
-                    "coins_per_block": 3,
-                    "grid": (9, 9),  # Aumentata da 7x7 a 9x9
-                    "walls": 0.0,
-                    "target_moves": (8 + i, 15 + i * 2),
-                    "shapes": SIMPLE_SHAPES if i <= 6 else SIMPLE_SHAPES + COMPLEX_SHAPES[:2]
-                }
+        # Livello 1: Tutorial (Unico con forme semplici)
+        curve[1] = {
+            "blocks": 2,
+            "coins_per_block": 2,
+            "grid": (7, 7),
+            "walls": 0.20,
+            "target_moves": (12, 16),  # Minimo 12 mosse
+            "tutorial": True,
+            "shapes": SIMPLE_SHAPES,  # I2, I3 ammessi solo qui
+            "use_dynamic_timer": True,
+            "complex_blocks_ratio": 0.0,
+            "min_coin_dist": 2  # Distanza minima moneta-blocco
+        }
         
-        # Livelli 11-50: Progressione Base - SPAZIO ADEGUATO
+        # Livelli 2-5: Intro Hard (NO forme semplici)
+        for i in range(2, 6):
+            curve[i] = {
+                "blocks": 2,
+                "coins_per_block": 2,
+                "grid": (7, 7),
+                "walls": 0.18,
+                "target_moves": (10, 16),
+                "shapes": VERY_COMPLEX_SHAPES,
+                "use_dynamic_timer": True,
+                "complex_blocks_ratio": 1.0,
+                "min_coin_dist": 0  # DISABILITATO: Troppo restrittivo per 7x7
+            }
+        
+        # Livelli 6-20: Sfida Estrema
+        for i in range(6, 21):
+            curve[i] = {
+                "blocks": 3,
+                "coins_per_block": 2,
+                "grid": (8, 8) if i <= 10 else (9, 9),
+                "walls": 0.15,
+                "target_moves": (12, 25),
+                "shapes": VERY_COMPLEX_SHAPES,
+                "use_dynamic_timer": True,
+                "complex_blocks_ratio": 1.0,
+                "strategic_coins": True,
+                "min_coin_dist": 0  # DISABILITATO: Priorità alla generazione
+            }
+        
+        # Livelli 21-50: Progressione Base - SPAZIO ADEGUATO
         for i in range(11, 51):
             num_blocks = min(5, 3 + (i - 11) // 10)
             curve[i] = {
@@ -453,10 +468,42 @@ class SmartLevelGenerator:
                 'xy': list(block['pos'])
             })
         
+        # VALIDAZIONE DISTANZA MONETE (Rework 5.0)
+        min_coin_dist = target.get('min_coin_dist', 0)
+        if min_coin_dist > 0:
+            for coin in coins_positions:
+                coin_pos = coin['pos']
+                coin_color = coin['color']
+                
+                # Trova blocco corrispondente
+                matching_block = next((b for b in current_blocks.values() if b['color'] == coin_color), None)
+                if matching_block:
+                    # Calcola celle occupate dal blocco nello stato iniziale
+                    block_cells = set()
+                    for dx, dy in SHAPE_CELLS[matching_block['shape']]:
+                        block_cells.add((matching_block['pos'][0] + dx, matching_block['pos'][1] + dy))
+                    
+                    # Calcola distanza minima da qualsiasi cella del blocco
+                    min_dist = float('inf')
+                    for bx, by in block_cells:
+                        dist = abs(bx - coin_pos[0]) + abs(by - coin_pos[1])
+                        min_dist = min(min_dist, dist)
+                    
+                    if min_dist < min_coin_dist:
+                        return None  # Moneta troppo vicina, scarta livello
+        
         coins_data = [{'color': c['color'], 'xy': list(c['pos'])} for c in coins_positions]
         
+        # Ottieni time_limit dal target
+        if target.get('use_dynamic_timer', False):
+            # Usa formula dinamica: (actual_moves * 2) + 15
+            time_limit = (len(move_history) * 2) + 15
+        else:
+            # Usa time_limit fisso dal target (se presente)
+            time_limit = target.get('time_limit', None)
+        
         level_data = self._create_level_data(
-            level_num, layout, blocks_initial, coins_data, max_moves
+            level_num, layout, blocks_initial, coins_data, max_moves, time_limit
         )
         
         # Il numero di mosse è quello che abbiamo applicato
@@ -504,10 +551,16 @@ class SmartLevelGenerator:
         
         return True
     
-    def generate_level(self, level_num: int, target: Dict, max_attempts: int = 200) -> Tuple[Optional[Dict], int]:
+    def generate_level(self, level_num: int, target: Dict, max_attempts: int = 2000) -> Tuple[Optional[Dict], int]:
         """Genera un livello con approccio REVERSE PATHFINDING"""
         
-        min_moves_required = 3 if level_num <= 10 else 5
+        # Filtro mosse REWORK 5.0
+        if level_num <= 5:
+            min_moves_required = 10  # Minimo 10 mosse
+        elif level_num <= 20:
+            min_moves_required = 12  # Minimo 12 mosse
+        else:
+            min_moves_required = 5
         
         for attempt in range(max_attempts):
             result = self._generate_level_reverse(target, level_num)
@@ -744,10 +797,15 @@ class SmartLevelGenerator:
         return coins
     
     def _create_level_data(self, level_num: int, layout: List[List[int]], 
-                          blocks: List[Dict], coins: List[Dict], max_moves: int) -> Dict:
+                          blocks: List[Dict], coins: List[Dict], max_moves: int, 
+                          time_limit: int = None) -> Dict:
         """Crea struttura dati livello"""
         grid_h = len(layout)
         grid_w = len(layout[0])
+        
+        # Usa time_limit personalizzato o calcola default
+        if time_limit is None:
+            time_limit = 60 + level_num * 5
         
         return {
             "meta": {
@@ -755,7 +813,7 @@ class SmartLevelGenerator:
                 "world": 1 + (level_num - 1) // 50,
                 "name": f"Level {level_num}",
                 "grid_size": [grid_w, grid_h],
-                "time_limit": 60 + level_num * 5,
+                "time_limit": time_limit,
                 "stars": [max_moves // 3, max_moves // 2, max_moves]
             },
             "layout": layout,
