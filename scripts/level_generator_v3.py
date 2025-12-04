@@ -393,8 +393,14 @@ class SmartLevelGenerator:
         current_blocks = {b['id']: b.copy() for b in blocks_end_state}
         move_history = []
         
-        # Applica mosse inverse
-        for move_num in range(target_num_moves):
+        # Applica mosse inverse con retry se bloccato
+        max_stuck_retries = 10
+        stuck_count = 0
+        
+        for move_num in range(target_num_moves * 2):  # Aumenta limite per permettere retry
+            if len(move_history) >= target_num_moves:
+                break  # Raggiunto obiettivo
+            
             # Scegli blocco casuale
             block_ids = list(current_blocks.keys())
             random.shuffle(block_ids)
@@ -423,14 +429,18 @@ class SmartLevelGenerator:
                         
                         move_history.append((block_id, (-dx, -dy)))  # Salva mossa NORMALE (inversa dell'inversa)
                         moved = True
+                        stuck_count = 0  # Reset stuck counter
                         break
                 
                 if moved:
                     break
             
-            # Se non riusciamo a muovere nessun blocco, fermiamoci
+            # Se non riusciamo a muovere nessun blocco
             if not moved:
-                break
+                stuck_count += 1
+                if stuck_count >= max_stuck_retries:
+                    # Troppi tentativi falliti, livello non valido
+                    return None
         
         # FASE 4: Crea level data con lo stato iniziale
         blocks_initial = []
@@ -451,6 +461,10 @@ class SmartLevelGenerator:
         
         # Il numero di mosse è quello che abbiamo applicato
         actual_moves = len(move_history)
+        
+        # Verifica che abbiamo raggiunto il minimo di mosse
+        if actual_moves < min_moves:
+            return None  # Non abbastanza mosse, riprova
         
         return level_data, actual_moves
     
@@ -490,7 +504,7 @@ class SmartLevelGenerator:
         
         return True
     
-    def generate_level(self, level_num: int, target: Dict, max_attempts: int = 50) -> Tuple[Optional[Dict], int]:
+    def generate_level(self, level_num: int, target: Dict, max_attempts: int = 200) -> Tuple[Optional[Dict], int]:
         """Genera un livello con approccio REVERSE PATHFINDING"""
         
         min_moves_required = 3 if level_num <= 10 else 5
@@ -990,9 +1004,28 @@ class SmartLevelGenerator:
 if __name__ == "__main__":
     import argparse
     
-    parser = argparse.ArgumentParser(description="TetraCoin Level Generator V3 - Reverse Pathfinding")
-    parser.add_argument("--count", type=int, default=10, help="Number of levels to generate")
-    parser.add_argument("--start", type=int, default=1, help="Starting level number")
+    parser = argparse.ArgumentParser(
+        description="TetraCoin Level Generator V3 - Reverse Pathfinding",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  # Generate levels 1-20
+  python level_generator_v3.py --start 1 --end 20
+  
+  # Generate levels 100-120
+  python level_generator_v3.py --start 100 --end 120
+  
+  # Generate first 10 levels (legacy mode)
+  python level_generator_v3.py --count 10
+  
+  # Generate test levels
+  python level_generator_v3.py --test --count 5
+        """
+    )
+    
+    parser.add_argument("--start", type=int, default=1, help="Starting level number (default: 1)")
+    parser.add_argument("--end", type=int, help="Ending level number (inclusive). If specified, overrides --count")
+    parser.add_argument("--count", type=int, help="Number of levels to generate (alternative to --end)")
     parser.add_argument("--test", action="store_true", help="Generate test levels instead")
     parser.add_argument("--test-difficulty", type=int, help="Generate test levels at specific difficulty")
     
@@ -1003,6 +1036,25 @@ if __name__ == "__main__":
     if args.test_difficulty:
         generator.generate_test_at_difficulty(args.test_difficulty, count=5)
     elif args.test:
-        generator.generate_random_test_levels(args.count)
+        count = args.count if args.count else 10
+        generator.generate_random_test_levels(count)
     else:
-        generator.generate_all_levels(num_levels=args.count, start_from=args.start)
+        # Determine range
+        start = args.start
+        
+        if args.end:
+            # Range mode: --start X --end Y
+            end = args.end
+            if end < start:
+                print(f"❌ Errore: --end ({end}) deve essere >= --start ({start})")
+                exit(1)
+            num_levels = end
+        elif args.count:
+            # Count mode: --start X --count N
+            num_levels = start + args.count - 1
+        else:
+            # Default: generate 10 levels starting from --start
+            num_levels = start + 9
+        
+        print(f"📦 Generazione livelli {start}-{num_levels}...")
+        generator.generate_all_levels(num_levels=num_levels, start_from=start)

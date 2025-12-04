@@ -118,22 +118,22 @@
   "blocks": [
     {
       "id": "b_0",
-      "shape": "I2",
+      "shape": "I3",
       "color": "RED",
       "counter": 3,
       "xy": [
-        1,
-        6
+        0,
+        0
       ]
     },
     {
       "id": "b_1",
-      "shape": "L3",
+      "shape": "O4",
       "color": "BLUE",
       "counter": 3,
       "xy": [
-        6,
-        3
+        3,
+        5
       ]
     }
   ],
@@ -142,22 +142,36 @@
       {
         "color": "RED",
         "xy": [
-          2,
-          7
+          3,
+          3
         ]
       },
       {
         "color": "RED",
         "xy": [
           1,
-          8
+          3
         ]
       },
       {
         "color": "RED",
         "xy": [
-          0,
-          6
+          3,
+          1
+        ]
+      },
+      {
+        "color": "BLUE",
+        "xy": [
+          5,
+          7
+        ]
+      },
+      {
+        "color": "BLUE",
+        "xy": [
+          7,
+          5
         ]
       },
       {
@@ -165,20 +179,6 @@
         "xy": [
           6,
           7
-        ]
-      },
-      {
-        "color": "BLUE",
-        "xy": [
-          5,
-          6
-        ]
-      },
-      {
-        "color": "BLUE",
-        "xy": [
-          5,
-          5
         ]
       }
     ],
