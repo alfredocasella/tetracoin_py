@@ -1,6 +1,5 @@
 import pygame
 from core.settings import *
-from data.levels import LEVEL_DATA
 from core.grid_manager import GridManager
 from core.sprites import BlockSprite, CoinSprite
 from ui.ui import UI
@@ -50,22 +49,13 @@ class Game:
                     # All levels completed, return to menu
                     self.state = self.STATE_MENU
                     return
-                # Try Python data as fallback
-                try:
-                    if level_index < len(LEVEL_DATA):
-                        self.level_data = LEVEL_DATA[level_index]
-                    else:
-                        self.state = self.STATE_MENU
-                        return
-                except:
-                    self.state = self.STATE_MENU
-                    return
-        else:
-            if level_index >= len(LEVEL_DATA):
-                # All levels completed
+                # No fallback available, return to menu
                 self.state = self.STATE_MENU
                 return
-            self.level_data = LEVEL_DATA[level_index]
+        else:
+            # JSON-only mode, no Python fallback
+            self.state = self.STATE_MENU
+            return
             
         self.grid_manager = GridManager(self.level_data)
         self.grid_manager._game_ref = self  # Store reference for coin collision check
@@ -236,11 +226,10 @@ class Game:
                             self.state = self.STATE_MENU
                             return
                     else:
-                        # Check Python levels
-                        if next_level_index >= len(LEVEL_DATA):
-                            print(f"All levels completed! (max: {len(LEVEL_DATA)})")
-                            self.state = self.STATE_MENU
-                            return
+                        # No Python levels available
+                        print(f"All levels completed!")
+                        self.state = self.STATE_MENU
+                        return
                     
                     # Load next level
                     self.current_level_index = next_level_index

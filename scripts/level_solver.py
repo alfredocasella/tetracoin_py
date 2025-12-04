@@ -8,11 +8,30 @@ from collections import deque
 from typing import Dict, Set, Tuple, List, Optional
 import json
 
-# Import shape definitions from level_generator
+# Import shape definitions from level_generator_v3
 import sys
 import os
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from level_generator import SHAPE_CELLS
+
+try:
+    from level_generator_v3 import SHAPE_CELLS
+except ImportError:
+    # Fallback to archived version if needed
+    try:
+        from archive.level_generator import SHAPE_CELLS
+    except ImportError:
+        # Define shapes directly as fallback
+        SHAPE_CELLS = {
+            'I2': [(0, 0), (1, 0)],
+            'I3': [(0, 0), (1, 0), (2, 0)],
+            'I4': [(0, 0), (1, 0), (2, 0), (3, 0)],
+            'O4': [(0, 0), (1, 0), (0, 1), (1, 1)],
+            'L3': [(0, 0), (1, 0), (0, 1)],
+            'L4': [(0, 0), (1, 0), (2, 0), (0, 1)],
+            'T4': [(0, 0), (1, 0), (2, 0), (1, 1)],
+            'S4': [(1, 0), (2, 0), (0, 1), (1, 1)],
+            'Z4': [(0, 0), (1, 0), (1, 1), (2, 1)],
+        }
 
 
 class GameState:
