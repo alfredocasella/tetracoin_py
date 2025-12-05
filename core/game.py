@@ -1,7 +1,7 @@
 import pygame
 from core.settings import *
 from core.grid_manager import GridManager
-from core.sprites import BlockSprite, CoinSprite
+from core.sprites import BlockSprite, CoinSprite, PiggyBankSprite, ObstacleSprite
 from ui.ui import UI
 from core.audio_manager import AudioManager
 from core.level_loader import LevelLoader
@@ -33,6 +33,10 @@ class Game:
         self.state = self.STATE_MENU
         self.current_level_index = 0
         self.gold_earned_this_level = 0
+        
+        # New Physics Engine State
+        self.grid_state: GridState = None
+        self.mode = "LEGACY" # "LEGACY" or "PHYSICS"
 
     def _init_physics_level(self):
         """Initialize the game state from the new spec level data."""
@@ -106,25 +110,21 @@ class Game:
                     self.entity_sprite_map[entity.id] = sprite
                     
                 elif entity.type == EntityType.PIGGYBANK:
-                    # Reuse BlockSprite for PiggyBank for now?
-                    # Or create a new specific sprite.
-                    # BlockSprite expects {'start_pos': (col, row), 'color': ..., 'count': ...}
                     data = {
-                        'start_pos': pos,
+                        'pos': pos,
                         'color': entity.color.value,
-                        'count': f"{entity.current_count}/{entity.capacity}", # Display capacity?
-                        'shape': 'O4' # Just a square/block
+                        'current': entity.current_count,
+                        'capacity': entity.capacity
                     }
-                    sprite = BlockSprite(data, [self.all_sprites, self.block_sprites],
+                    sprite = PiggyBankSprite(data, [self.all_sprites, self.block_sprites],
                                        grid_offsets=(GRID_OFFSET_X, GRID_OFFSET_Y), tile_size=self.tile_size)
-                    # Override shape to single cell if needed
-                    sprite.shape_cells = [(0,0)]
-                    sprite.update_appearance()
                     self.entity_sprite_map[entity.id] = sprite
                     
                 elif entity.type == EntityType.OBSTACLE:
-                     # Obstacle visual
-                     pass
+                    data = {'pos': pos}
+                    sprite = ObstacleSprite(data, [self.all_sprites, self.block_sprites],
+                                      grid_offsets=(GRID_OFFSET_X, GRID_OFFSET_Y), tile_size=self.tile_size)
+                    self.entity_sprite_map[entity.id] = sprite
         else:
             # Positional update only
             for entity in self.grid_state.entities:
@@ -414,8 +414,7 @@ class Game:
                         # Clicked empty space or wall
                         if self.selected_block and not self.selected_block.dragging:
                             # Check if adjacent (Click to Move logic)
-                            self.target_x = self.offset_x + self.grid_x * self.tile_size
-                            self.target_y = self.offset_y + self.grid_y * self.tile_size                           
+                            # Check if adjacent (Click to Move logic)                        
                             dx = gx - self.selected_block.grid_x
                             dy = gy - self.selected_block.grid_y
                             
@@ -574,6 +573,7 @@ class Game:
             
             self.audio_manager.play_win()
 
+    def update(self, dt):
         # Update UI animations (needed for timer pulse)
         self.ui.update(dt)
         
@@ -637,6 +637,15 @@ class Game:
         elif self.state == self.STATE_DEFEAT:
             self.ui.draw_defeat(screen, reason="Tempo Scaduto", lives_remaining=self.lives)
         elif self.state == self.STATE_PLAY:
+            if self.mode == "PHYSICS":
+                screen.fill(BG_COLOR)
+                self.draw_grid(screen)
+                self.all_sprites.draw(screen)
+                # self.ui.draw(screen, self) # Draw UI even in physics mode? Yes mostly.
+                # But ui.draw relies on game stats.
+                # Let's bypass UI call for now in PHYSICS mode if it causes issues, or adapt UI.
+                return
+
             screen.fill(BG_COLOR)
             self.draw_grid(screen)
             
@@ -736,8 +745,12 @@ class Game:
     
     def draw_grid(self, screen):
         # Draw grid based on actual level dimensions
-        cols = self.level_data['grid_cols']
-        rows = self.level_data['grid_rows']
+        if self.mode == "PHYSICS" and self.grid_state:
+            cols = self.grid_state.cols
+            rows = self.grid_state.rows
+        else:
+            cols = self.level_data['grid_cols']
+            rows = self.level_data['grid_rows']
         
         grid_width = cols * self.tile_size
         grid_height = rows * self.tile_size
@@ -764,6 +777,9 @@ class Game:
         # 3. Border (Slightly darker blue)
         pygame.draw.rect(screen, TRAY_BORDER, tray_rect, 4, border_radius=15)
         
+        if self.mode == "PHYSICS":
+            return # Entities are drawn by sprites
+            
         # Draw static elements (Walls, Voids, Empty Cells)
         
         # Draw static elements (Walls, Voids, Empty Cells)

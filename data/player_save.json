@@ -1,27 +1,27 @@
 {
   "player": {
     "name": "Player",
-    "total_stars": 30,
-    "tetra_gold": 350,
+    "total_stars": 32,
+    "tetra_gold": 365,
     "current_world": 1,
     "unlocked_levels": 21,
-    "total_moves": 535,
-    "total_time_played": 318.98599999999993
+    "total_moves": 564,
+    "total_time_played": 362.39599999999996
   },
   "levels": {
     "1": {
       "completed": true,
-      "stars": 1,
-      "best_moves": 4,
-      "best_time": 2.523,
-      "attempts": 6
+      "stars": 3,
+      "best_moves": 2,
+      "best_time": 1.886,
+      "attempts": 10
     },
     "2": {
       "completed": true,
       "stars": 1,
       "best_moves": 6,
       "best_time": 2.607,
-      "attempts": 5
+      "attempts": 6
     },
     "3": {
       "completed": true,

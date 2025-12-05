@@ -344,3 +344,66 @@ class CoinSprite(pygame.sprite.Sprite):
 
     def trigger_sparkle(self):
         pass
+
+class PiggyBankSprite(pygame.sprite.Sprite):
+    def __init__(self, data, groups, grid_offsets=None, tile_size=TILE_SIZE):
+        super().__init__(groups)
+        self.data = data
+        self.grid_x, self.grid_y = data['pos']
+        self.tile_size = tile_size
+        self.offset_x = grid_offsets[0] if grid_offsets else GRID_OFFSET_X
+        self.offset_y = grid_offsets[1] if grid_offsets else GRID_OFFSET_Y
+        
+        self.color_key = data['color']
+        self.current = data['current']
+        self.capacity = data['capacity']
+        
+        self.image = pygame.Surface((tile_size, tile_size), pygame.SRCALPHA)
+        self.rect = self.image.get_rect()
+        
+        # Position
+        self.rect.x = self.offset_x + self.grid_x * self.tile_size
+        self.rect.y = self.offset_y + self.grid_y * self.tile_size
+        
+        self.update_appearance()
+        
+    def update_appearance(self):
+        self.image.fill((0,0,0,0))
+        colors = BLOCK_COLORS.get(self.color_key, BLOCK_COLORS['YELLOW'])
+        main_color = colors['main']
+        dark_color = colors['dark']
+        
+        # Draw Container (Hollow box)
+        rect = pygame.Rect(0, 0, self.tile_size, self.tile_size)
+        pygame.draw.rect(self.image, main_color, rect, border_radius=8)
+        
+        # Inner dark area
+        inner_rect = rect.inflate(-10, -10)
+        pygame.draw.rect(self.image, dark_color, inner_rect, border_radius=4)
+        
+        # Draw "Glass" or Open front?
+        # Just text for now
+        font = pygame.font.Font(None, 24)
+        text = font.render(f"{self.current}/{self.capacity}", True, (255, 255, 255))
+        text_rect = text.get_rect(center=rect.center)
+        self.image.blit(text, text_rect)
+
+class ObstacleSprite(pygame.sprite.Sprite):
+    def __init__(self, data, groups, grid_offsets=None, tile_size=TILE_SIZE):
+        super().__init__(groups)
+        self.grid_x, self.grid_y = data['pos']
+        self.tile_size = tile_size
+        self.offset_x = grid_offsets[0] if grid_offsets else GRID_OFFSET_X
+        self.offset_y = grid_offsets[1] if grid_offsets else GRID_OFFSET_Y
+        
+        self.image = pygame.Surface((tile_size, tile_size), pygame.SRCALPHA)
+        self.rect = self.image.get_rect()
+        
+        self.rect.x = self.offset_x + self.grid_x * self.tile_size
+        self.rect.y = self.offset_y + self.grid_y * self.tile_size
+        
+        # Draw Gray Stone/Obstacle
+        pygame.draw.rect(self.image, (100, 100, 100), (0, 0, self.tile_size, self.tile_size), border_radius=5)
+        pygame.draw.rect(self.image, (150, 150, 150), (5, 5, self.tile_size-10, self.tile_size-10), border_radius=3)
+        pygame.draw.line(self.image, (50,50,50), (0,0), (self.tile_size, self.tile_size), 2)
+

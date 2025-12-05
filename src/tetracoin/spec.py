@@ -13,6 +13,10 @@ class EntityType(str, Enum):
     PIGGYBANK = "PIGGYBANK"
     OBSTACLE = "OBSTACLE"
     FIXED_BLOCK = "FIXED_BLOCK"
+    SUPPORT = "SUPPORT"
+    DEFLECTOR = "DEFLECTOR"
+    GATEWAY = "GATEWAY"
+    TRAP = "TRAP"
     
 class ColorType(str, Enum):
     """Standard colors for game entities."""
@@ -22,6 +26,7 @@ class ColorType(str, Enum):
     YELLOW = "YELLOW"
     PURPLE = "PURPLE"
     ORANGE = "ORANGE"
+    GRAY = "GRAY"
     
 class Direction(str, Enum):
     """Cardinal directions."""
@@ -87,6 +92,45 @@ class Obstacle(Entity):
 class FixedBlock(Entity):
     """A static block preventing movement."""
     type: EntityType = field(default=EntityType.FIXED_BLOCK, init=False)
+
+@dataclass
+class Support(Entity):
+    """A platform that holds objects but doesn't block movement sideways? Or just a static platform."""
+    type: EntityType = field(default=EntityType.SUPPORT, init=False)
+
+@dataclass
+class Deflector(Entity):
+    """Deviates falling objects."""
+    type: EntityType = field(default=EntityType.DEFLECTOR, init=False)
+    direction: str = "LEFT" # LEFT, RIGHT, etc.
+
+    def to_dict(self):
+        d = super().to_dict()
+        d.update({"direction": self.direction})
+        return d
+
+@dataclass
+class Gateway(Entity):
+    """A conditional passage."""
+    type: EntityType = field(default=EntityType.GATEWAY, init=False)
+    is_open: bool = False
+    condition: str = "DEFAULT" # e.g. "COIN_COUNT", "SWITCH"
+
+    def to_dict(self):
+        d = super().to_dict()
+        d.update({"is_open": self.is_open, "condition": self.condition})
+        return d
+
+@dataclass
+class Trap(Entity):
+    """Hazardous entity."""
+    type: EntityType = field(default=EntityType.TRAP, init=False)
+    subtype: str = "SPIKES" # SPIKES, PIT
+
+    def to_dict(self):
+        d = super().to_dict()
+        d.update({"subtype": self.subtype})
+        return d
 
 @dataclass
 class GridState:
