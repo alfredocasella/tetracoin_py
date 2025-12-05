@@ -12,6 +12,7 @@ from src.tetracoin.validation import ValidationEngine
 from src.tetracoin.coin_placer import CoinPlacer
 from src.tetracoin.flow_control import FlowControlObstacleAdder
 from src.tetracoin.difficulty import TetracoinDifficultyAnalyzer
+from src.tetracoin.auto_adjuster import TetracoinAutoAdjuster, AdjusterConfig
 
 class TetracoinGridGenerator:
     """
@@ -37,12 +38,24 @@ class TetracoinGridGenerator:
         if seed is not None:
             random.seed(seed)
             
-    def generate(self, max_attempts: int = 50) -> Optional[GridState]:
+    def generate(self, max_attempts: int = 50, auto_adjust: bool = False, target_difficulty: float = 0.5) -> Optional[GridState]:
         """Generate a valid grid with analyzed difficulty."""
         
         for attempt in range(max_attempts):
             grid = self._attempt_generation()
             if grid:
+                if auto_adjust:
+                    adjuster = TetracoinAutoAdjuster() # Use defaults
+                    # target_difficulty is 0-1, adjuster expects 0-1, analyzer produces 0-100?
+                    # Check AutoAdjuster logic. 
+                    # `needs_hardening = current_difficulty < target_difficulty * 100`
+                    # Yes, target_difficulty passed here should be 0-1.
+                    result = adjuster.auto_adjust(grid, target_difficulty, max_iterations=20)
+                    if result.success:
+                        return result.grid
+                    # If failed to adjust, maybe return original or retry?
+                    # Return adjusted best effort
+                    return result.grid
                 return grid
                 
         return None

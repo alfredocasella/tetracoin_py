@@ -161,7 +161,18 @@ class TetracoinSolver:
         BFS Solver.
         Returns: (found, steps, moves)
         """
-        initial_state = GameState(initial_grid)
+        # 0. Settle initial grid (simulate gravity/interactions without player input)
+        # We need a copy because we don't want to mutate the input grid passed by caller
+        settled_grid = copy.deepcopy(initial_grid)
+        max_ticks = 1000
+        for _ in range(max_ticks):
+            prev_snapshot = str([(e.id, e.row, e.col, e.is_collected) for e in settled_grid.entities])
+            settled_grid, _ = PhysicsEngine.update(settled_grid)
+            curr_snapshot = str([(e.id, e.row, e.col, e.is_collected) for e in settled_grid.entities])
+            if prev_snapshot == curr_snapshot:
+                break
+                
+        initial_state = GameState(settled_grid)
         
         if initial_state.is_winning():
             return True, 0, []
