@@ -181,27 +181,34 @@ class TetracoinGridGenerator:
         return self.validator.validate(self.to_config_dict(grid))
         
     def to_config_dict(self, grid: GridState) -> dict:
-        """Convert GridState to config dictionary format."""
+        """Convert GridState to config dictionary format (using x,y / col,row coordinates)."""
         coins = []
         obstacles = []
         player_start = grid.player_start
         
         for e in grid.entities:
             if e.type == EntityType.COIN:
-                coins.append((e.row, e.col))
+                coins.append((e.col, e.row))
             elif e.type == EntityType.OBSTACLE or e.type == EntityType.FIXED_BLOCK:
-                obstacles.append((e.row, e.col))
+                obstacles.append((e.col, e.row))
                 
         # Fallback for player start if not in grid state
-        if player_start is None:
-             # Default to (0,0) or derived?
-             # For now, let's use (0,0) so validation doesn't crash on type checks
-             player_start = (0, 0)
+        # Assuming grid.player_start is (row, col) if present? 
+        # Actually spec doesn't strictly say, but usually Grids use row,col.
+        # If we assume grid.player_start is (row, col), flip it.
+        # If it is (col, row), keep it.
+        # Let's assume (row, col) consistent with entities.
+        
+        final_player_start = (0, 0)
+        if player_start:
+             final_player_start = (player_start[1], player_start[0])
+        else:
+             final_player_start = (0, 0)
 
         return {
             'width': grid.cols,
             'height': grid.rows,
-            'player_start': player_start,
+            'player_start': final_player_start,
             'coins': coins,
             'obstacles': obstacles
         }

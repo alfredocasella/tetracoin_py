@@ -1,12 +1,14 @@
 import pygame
 from core.settings import *
 from core.grid_manager import GridManager
+
 from core.sprites import BlockSprite, CoinSprite, PiggyBankSprite, ObstacleSprite
 from ui.ui import UI
 from core.audio_manager import AudioManager
 from core.level_loader import LevelLoader
 from core.save_system import SaveSystem
 from src.tetracoin.spec import GridState, EntityType, ColorType, PhysicsEngine, Entity, Coin, PiggyBank, Obstacle, FixedBlock
+from typing import Optional
 
 class Game:
     def __init__(self):
@@ -14,7 +16,9 @@ class Game:
         pygame.display.set_caption("TetraCoin")
         self.clock = pygame.time.Clock()
         self.running = True
-        self.ui = UI()
+        
+        # Initialize UI with screen
+        self.ui = UI(self.screen)
         self.audio_manager = AudioManager()
         self.audio_manager.play_bgm()
         
@@ -37,6 +41,10 @@ class Game:
         # New Physics Engine State
         self.grid_state: GridState = None
         self.mode = "LEGACY" # "LEGACY" or "PHYSICS"
+        
+        # PHYSICS mode gameplay state
+        self.selected_entity_id: Optional[str] = None  # ID of selected movable entity
+        self.physics_move_count = 0  # Track moves in PHYSICS mode
 
     def _init_physics_level(self):
         """Initialize the game state from the new spec level data."""
@@ -143,6 +151,63 @@ class Game:
                     sprite.rect.x = GRID_OFFSET_X + entity.col * self.tile_size
                     sprite.rect.y = GRID_OFFSET_Y + entity.row * self.tile_size - (15 if entity.type == EntityType.COIN else 0)
 
+    def _init_legacy_level(self):
+        """Initialize the game state from legacy level format."""
+        print("Initializing Legacy Level...")
+        
+        self.grid_manager = GridManager(self.level_data)
+        self.grid_manager._game_ref = self  # Store reference for coin collision check
+        
+        # Calculate dynamic grid offset to center it in the GRID_AREA
+        max_grid_width = SCREEN_WIDTH - 20
+        max_grid_height = GRID_AREA_HEIGHT - 20
+        
+        tile_size_w = max_grid_width // self.level_data['grid_cols']
+        tile_size_h = max_grid_height // self.level_data['grid_rows']
+        
+        self.tile_size = min(TILE_SIZE, tile_size_w, tile_size_h)
+        
+        grid_pixel_width = self.level_data['grid_cols'] * self.tile_size
+        grid_pixel_height = self.level_data['grid_rows'] * self.tile_size
+        
+        global GRID_OFFSET_X, GRID_OFFSET_Y
+        GRID_OFFSET_X = (SCREEN_WIDTH - grid_pixel_width) // 2
+        GRID_OFFSET_Y = TOP_HUD_HEIGHT + (GRID_AREA_HEIGHT - grid_pixel_height) // 2
+        
+        # Sprite Groups
+        self.all_sprites = pygame.sprite.Group()
+        self.block_sprites = pygame.sprite.Group()
+        self.coin_sprites = pygame.sprite.Group()
+        
+        # Create Block Sprites
+        for block_data in self.level_data['blocks']:
+            block = BlockSprite(block_data, [self.all_sprites, self.block_sprites], 
+                              grid_offsets=(GRID_OFFSET_X, GRID_OFFSET_Y), tile_size=self.tile_size)
+            self.grid_manager.register_block(block)
+            
+        # Create Coin Sprites (DROP AWAY STYLE: Static + Queue spawning)
+        self.coin_queues = []  # RESTORED: Essential for Drop Away spawning!
+        coins_data = self.level_data['coins']
+        if isinstance(coins_data, list):
+            # Legacy format: list of coins (all static)
+            for coin_data in coins_data:
+                CoinSprite(coin_data, [self.all_sprites, self.coin_sprites],
+                         grid_offsets=(GRID_OFFSET_X, GRID_OFFSET_Y), tile_size=self.tile_size)
+        else:
+            # New format: dict with 'static' and 'queues'
+            # Static coins
+            for coin_data in coins_data.get('static', []):
+                CoinSprite(coin_data, [self.all_sprites, self.coin_sprites],
+                         grid_offsets=(GRID_OFFSET_X, GRID_OFFSET_Y), tile_size=self.tile_size)
+            
+            # Queue spawning (DROP AWAY STYLE: continuous spawning from tube)
+            for queue_data in coins_data.get('queues', []):
+                self.coin_queues.append({
+                    'pos': queue_data['pos'],
+                    'items': list(queue_data['items'])
+                })
+                self.process_coin_queue(self.coin_queues[-1])
+
     def start_game(self):
         self.state = self.STATE_PLAY
         self.load_level(self.current_level_index)
@@ -167,94 +232,16 @@ class Game:
             self.state = self.STATE_MENU
             return
             
-        if 'entities' in self.level_data:
-             # NEW SPEC DETECTED
-             self.mode = "PHYSICS"
-             self._init_physics_level()
-             return
-
-        # LEGACY MODE FALLBACK
-        self.mode = "LEGACY"
-        # Check if new spec level
-        if isinstance(self.level_data, dict) and 'entities' in self.level_data:
-             # NEW SPEC DETECTED
-             self.mode = "PHYSICS"
-             self._init_physics_level()
-             return
-
-        # LEGACY MODE FALLBACK
-        self.mode = "LEGACY"
-        self.grid_manager = GridManager(self.level_data)
-        self.grid_manager._game_ref = self  # Store reference for coin collision check
-        
-        # Calculate dynamic grid offset to center it in the GRID_AREA
-        # Dynamic Tile Size Calculation
-        max_grid_width = SCREEN_WIDTH - 20 # 10px margin on each side
-        max_grid_height = GRID_AREA_HEIGHT - 20 # 10px margin top/bottom
-        
-        # Calculate max possible tile size to fit width and height
-        tile_size_w = max_grid_width // self.level_data['grid_cols']
-        tile_size_h = max_grid_height // self.level_data['grid_rows']
-        
-        # Use the smaller of the two, but cap at default TILE_SIZE
-        self.tile_size = min(TILE_SIZE, tile_size_w, tile_size_h)
-        
-        grid_pixel_width = self.level_data['grid_cols'] * self.tile_size
-        grid_pixel_height = self.level_data['grid_rows'] * self.tile_size
-        
-        # Center horizontally
-        global GRID_OFFSET_X, GRID_OFFSET_Y
-        GRID_OFFSET_X = (SCREEN_WIDTH - grid_pixel_width) // 2
-        
-        # Center vertically in the available Grid Area
-        available_height = GRID_AREA_HEIGHT
-        GRID_OFFSET_Y = TOP_HUD_HEIGHT + (available_height - grid_pixel_height) // 2
-        
-        # Sprite Groups
-        self.all_sprites = pygame.sprite.Group()
-        self.block_sprites = pygame.sprite.Group()
-        self.coin_sprites = pygame.sprite.Group()
-        
-        # Create Block Sprites
-        for block_data in self.level_data['blocks']:
-            block = BlockSprite(block_data, [self.all_sprites, self.block_sprites], 
-                              grid_offsets=(GRID_OFFSET_X, GRID_OFFSET_Y), tile_size=self.tile_size)
-            
-            # Validate block fits within grid
-            for cell_x, cell_y in block.get_occupied_cells():
-                if not (0 <= cell_x < self.level_data['grid_cols'] and 
-                        0 <= cell_y < self.level_data['grid_rows']):
-                    print(f"WARNING: Block {block_data.get('id', '?')} at {block_data['start_pos']} " +
-                          f"with shape {block_data.get('shape', 'I2')} extends outside grid bounds!")
-                    print(f"  Cell ({cell_x}, {cell_y}) is out of bounds ({self.level_data['grid_cols']}x{self.level_data['grid_rows']})")
-            
-            self.grid_manager.register_block(block)
-            
-        # Create Coin Sprites
-        self.coin_queues = [] # List of dicts: {'pos': (x,y), 'items': ['RED', 'BLUE']}
-        
-        # Handle new coin format (dict) vs old (list) for backward compatibility if needed
-        coins_data = self.level_data['coins']
-        if isinstance(coins_data, list):
-             # Legacy format
-             for coin_data in coins_data:
-                CoinSprite(coin_data, [self.all_sprites, self.coin_sprites],
-                         grid_offsets=(GRID_OFFSET_X, GRID_OFFSET_Y), tile_size=self.tile_size)
+        # Auto-detect mode based on level format
+        if 'grid' in self.level_data and 'entities' in self.level_data:
+            # V2 format - use PHYSICS mode
+            self.mode = "PHYSICS"
+            self._init_physics_level()
         else:
-            # New format
-            for coin_data in coins_data.get('static', []):
-                CoinSprite(coin_data, [self.all_sprites, self.coin_sprites],
-                         grid_offsets=(GRID_OFFSET_X, GRID_OFFSET_Y), tile_size=self.tile_size)
+            # Legacy format - use LEGACY mode
+            self.mode = "LEGACY"
+            self._init_legacy_level()
             
-            for queue_data in coins_data.get('queues', []):
-                # Deep copy to avoid modifying level data
-                self.coin_queues.append({
-                    'pos': queue_data['pos'],
-                    'items': list(queue_data['items'])
-                })
-                # Spawn first item if available
-                self.process_coin_queue(self.coin_queues[-1])
-
         self.pending_spawns = [] # List of {'pos': (x,y), 'color': 'RED'}
         
         self.selected_block = None
@@ -274,22 +261,22 @@ class Game:
         self.lives = 5 # Should load from save system
         self.timer_state = "NORMAL" # NORMAL, WARNING, CRITICAL
 
+    # ========== DROP AWAY COIN SPAWNING SYSTEM ==========
     def process_coin_queue(self, queue):
+        """Process coin queue spawning (DROP AWAY style: continuous from tube)"""
         if not queue['items']:
             return
             
-        # Peek next item
         next_color = queue['items'][0]
         pos = queue['pos']
         
-        # Check if space is free or occupied
         block_at_pos = self.grid_manager.get_block_at(pos[0], pos[1])
         
         if block_at_pos:
-            # SPAWN PARADOX
+            # SPAWN PARADOX: Block on spawn point
             if block_at_pos.block_data['color'] == next_color:
                 # Same color: Instant Collect!
-                queue['items'].pop(0) # Remove from queue
+                queue['items'].pop(0)
                 block_at_pos.counter -= 1
                 block_at_pos.update_appearance()
                 self.audio_manager.play_collect()
@@ -301,35 +288,25 @@ class Game:
                     if block_at_pos in self.grid_manager.blocks:
                         self.grid_manager.blocks.remove(block_at_pos)
                 
-                # Recursively process queue
                 self.process_coin_queue(queue)
-            else:
-                # Different color: Pending Spawn
-                # Do nothing, wait for block to move away.
-                # We need to track that this queue is blocked? 
-                # Actually, we can just check queues/pending spawns after every move.
-                pass
+            # Different color: wait for block to move
         else:
-            # Space free: Spawn normally
+            # Space free: Spawn coin
             color = queue['items'].pop(0)
             CoinSprite({'color': color, 'pos': pos}, [self.all_sprites, self.coin_sprites],
                      grid_offsets=(GRID_OFFSET_X, GRID_OFFSET_Y), tile_size=self.tile_size)
 
     def check_pending_spawns(self):
-        # Check all queues to see if they can spawn now
+        """Check all queues for pending spawns (DROP AWAY style)"""
         for queue in self.coin_queues:
-            # If queue has items and NO coin at that pos
             if queue['items']:
                 pos = queue['pos']
-                # Check if a coin already exists there (spawned)
-                coin_exists = False
-                for coin in self.coin_sprites:
-                    if coin.grid_x == pos[0] and coin.grid_y == pos[1]:
-                        coin_exists = True
-                        break
+                coin_exists = any(coin.grid_x == pos[0] and coin.grid_y == pos[1] 
+                                for coin in self.coin_sprites)
                 
                 if not coin_exists:
                     self.process_coin_queue(queue)
+    # ========== END DROP AWAY COIN SPAWNING ==========
 
     def handle_input(self, event):
         # ... (Input handling code remains mostly same, but we need to call check_pending_spawns after moves)
@@ -390,70 +367,76 @@ class Game:
                 return
 
             if event.type == pygame.MOUSEBUTTONDOWN:
-                if event.button == 1: # Left click
-                    mx, my = pygame.mouse.get_pos()
-                    # Convert to grid coordinates
-                    gx = (mx - GRID_OFFSET_X) // self.tile_size
-                    gy = (my - GRID_OFFSET_Y) // self.tile_size
-                    
-                    clicked_block = None
-                    if self.grid_manager.is_valid_pos(gx, gy):
-                        clicked_block = self.grid_manager.get_block_at(gx, gy)
-                    
-                    if clicked_block:
-                        # Start Dragging
-                        if self.selected_block:
-                            self.selected_block.deselect()
-                        self.selected_block = clicked_block
-                        self.selected_block.select()
-                        self.selected_block.dragging = True
-                        self.selected_block.drag_offset_x = mx - self.selected_block.rect.x
-                        self.selected_block.drag_offset_y = my - self.selected_block.rect.y
+                if event.button == 1:  # Left click - handle both modes
+                    if self.mode == "PHYSICS":
+                        self._handle_physics_mouse_down(event)
+                    elif self.mode == "LEGACY":
+                        mx, my = pygame.mouse.get_pos()
+                        # Convert to grid coordinates
+                        gx = (mx - GRID_OFFSET_X) // self.tile_size
+                        gy = (my - GRID_OFFSET_Y) // self.tile_size
                         
-                    else:
-                        # Clicked empty space or wall
-                        if self.selected_block and not self.selected_block.dragging:
-                            # Check if adjacent (Click to Move logic)
-                            # Check if adjacent (Click to Move logic)                        
-                            dx = gx - self.selected_block.grid_x
-                            dy = gy - self.selected_block.grid_y
+                        clicked_block = None
+                        if self.grid_manager.is_valid_pos(gx, gy):
+                            clicked_block = self.grid_manager.get_block_at(gx, gy)
+                        
+                        if clicked_block:
+                            # Start Dragging
+                            if self.selected_block:
+                                self.selected_block.deselect()
+                            self.selected_block = clicked_block
+                            self.selected_block.select()
+                            self.selected_block.dragging = True
+                            self.selected_block.drag_offset_x = mx - self.selected_block.rect.x
+                            self.selected_block.drag_offset_y = my - self.selected_block.rect.y
                             
-                            if abs(dx) + abs(dy) == 1: # Adjacent
-                                if self.grid_manager.try_move(self.selected_block, dx, dy):
+                        else:
+                            # Clicked empty space or wall
+                            if self.selected_block and not self.selected_block.dragging:
+                                # Check if adjacent (Click to Move logic)
+                                # Check if adjacent (Click to Move logic)                        
+                                dx = gx - self.selected_block.grid_x
+                                dy = gy - self.selected_block.grid_y
+                                
+                                if abs(dx) + abs(dy) == 1: # Adjacent
+                                    if self.grid_manager.try_move(self.selected_block, dx, dy):
+                                        self.selected_block.move(dx, dy)
+                                        self.audio_manager.play_move()
+                                        self.move_count += 1
+                                        self.check_collection(self.selected_block)
+                                        self.check_pending_spawns()
+                                        self.check_deadlock()
+                                else:
+                                    self.selected_block.deselect()
+                                    self.selected_block = None
+
+            elif event.type == pygame.MOUSEBUTTONUP:
+                if event.button == 1:
+                    if self.mode == "PHYSICS":
+                        self._handle_physics_mouse_up(event)
+                    elif self.mode == "LEGACY":
+                        if self.selected_block and self.selected_block.dragging:
+                            self.selected_block.dragging = False
+                            
+                            center_x = self.selected_block.rect.centerx
+                            center_y = self.selected_block.rect.centery
+                            
+                            drop_gx = (center_x - GRID_OFFSET_X) // self.tile_size
+                            drop_gy = (center_y - GRID_OFFSET_Y) // self.tile_size
+                            
+                            dx = drop_gx - self.selected_block.grid_x
+                            dy = drop_gy - self.selected_block.grid_y
+                            
+                            # Allow ANY valid move (not just adjacent)
+                            if dx != 0 or dy != 0:
+                                 if self.grid_manager.try_move(self.selected_block, dx, dy):
                                     self.selected_block.move(dx, dy)
                                     self.audio_manager.play_move()
                                     self.move_count += 1
                                     self.check_collection(self.selected_block)
-                                    self.check_pending_spawns()
+                                    self.check_pending_spawns()  # RESTORED for Drop Away
                                     self.check_deadlock()
-                            else:
-                                self.selected_block.deselect()
-                                self.selected_block = None
-
-            elif event.type == pygame.MOUSEBUTTONUP:
-                if event.button == 1:
-                    if self.selected_block and self.selected_block.dragging:
-                        self.selected_block.dragging = False
-                        
-                        center_x = self.selected_block.rect.centerx
-                        center_y = self.selected_block.rect.centery
-                        
-                        drop_gx = (center_x - GRID_OFFSET_X) // self.tile_size
-                        drop_gy = (center_y - GRID_OFFSET_Y) // self.tile_size
-                        
-                        dx = drop_gx - self.selected_block.grid_x
-                        dy = drop_gy - self.selected_block.grid_y
-                        
-                        # Allow ANY valid move (not just adjacent)
-                        if dx != 0 or dy != 0:
-                             if self.grid_manager.try_move(self.selected_block, dx, dy):
-                                self.selected_block.move(dx, dy)
-                                self.audio_manager.play_move()
-                                self.move_count += 1
-                                self.check_collection(self.selected_block)
-                                self.check_pending_spawns()
-                                self.check_deadlock()
-                                moved = True
+                                    moved = True
                         
                         # If not moved, block slides back in update()
 
@@ -484,7 +467,9 @@ class Game:
                             self.preview_pos = (preview_gx, preview_gy)
                             
             elif event.type == pygame.KEYDOWN:
-                if self.selected_block:
+                if self.mode == "PHYSICS" and self.selected_entity_id:
+                    self._handle_physics_keyboard(event)
+                elif self.selected_block and self.mode == "LEGACY":
                     dx, dy = 0, 0
                     if event.key == pygame.K_LEFT: dx = -1
                     elif event.key == pygame.K_RIGHT: dx = 1
@@ -497,41 +482,173 @@ class Game:
                             self.audio_manager.play_move()
                             self.move_count += 1
                             self.check_collection(self.selected_block)
-                            self.check_pending_spawns()
+                            self.check_pending_spawns()  # RESTORED for Drop Away
                             self.check_deadlock()
+
+    # ========== PHYSICS MODE INPUT HANDLING ==========
+    
+    def _handle_physics_mouse_down(self, event):
+        """Handle mouse down in PHYSICS mode - select movable entities."""
+        mx, my = pygame.mouse.get_pos()
+        gx = (mx - GRID_OFFSET_X) // self.tile_size
+        gy = (my - GRID_OFFSET_Y) // self.tile_size
+        
+        # Find entity at clicked position
+        clicked_entity = self._get_entity_at(gy, gx)  # Note: row, col
+        
+        if clicked_entity and self._is_movable(clicked_entity):
+            # Select this entity
+            self.selected_entity_id = clicked_entity.id
+            print(f"Selected entity: {clicked_entity.id} ({clicked_entity.type})")
+        else:
+            # Deselect if clicking empty space
+            if self.selected_entity_id:
+                print(f"Deselected entity")
+                self.selected_entity_id = None
+    
+    def _handle_physics_mouse_up(self, event):
+        """Handle mouse up in PHYSICS mode."""
+        # For now, we keep selection active until user clicks elsewhere or uses keyboard
+        pass
+    
+    def _handle_physics_keyboard(self, event):
+        """Handle keyboard input in PHYSICS mode - move selected entity."""
+        if not self.selected_entity_id:
+            return
+            
+        dx, dy = 0, 0
+        if event.key == pygame.K_LEFT: dx = -1
+        elif event.key == pygame.K_RIGHT: dx = 1
+        elif event.key == pygame.K_UP: dy = -1
+        elif event.key == pygame.K_DOWN: dy = 1
+        elif event.key == pygame.K_ESCAPE:
+            self.selected_entity_id = None
+            print("Deselected entity")
+            return
+        
+        if dx != 0 or dy != 0:
+            self._move_entity_physics(self.selected_entity_id, dx, dy)
+    
+    def _get_entity_at(self, row: int, col: int) -> Optional[Entity]:
+        """Get entity at grid position (row, col)."""
+        if not self.grid_state:
+            return None
+        for entity in self.grid_state.entities:
+            if not entity.is_collected and entity.row == row and entity.col == col:
+                return entity
+        return None
+    
+    def _is_movable(self, entity: Entity) -> bool:
+        """Check if entity type is movable by player."""
+        movable_types = {EntityType.OBSTACLE, EntityType.SUPPORT, EntityType.DEFLECTOR}
+        return entity.type in movable_types
+    
+    def _move_entity_physics(self, entity_id: str, dx: int, dy: int):
+        """Move an entity in PHYSICS mode and trigger physics update."""
+        if not self.grid_state:
+            return
+            
+        # Find entity
+        entity = next((e for e in self.grid_state.entities if e.id == entity_id), None)
+        if not entity:
+            return
+        
+        new_row = entity.row + dy
+        new_col = entity.col + dx
+        
+        # Check bounds
+        if not (0 <= new_row < self.grid_state.rows and 0 <= new_col < self.grid_state.cols):
+            print(f"Move out of bounds")
+            return
+        
+        # Check collision with other entities
+        if self._get_entity_at(new_row, new_col):
+            print(f"Position occupied")
+            return
+        
+        # Apply move
+        entity.row = new_row
+        entity.col = new_col
+        self.physics_move_count += 1
+        self.audio_manager.play_move()
+        print(f"Moved {entity.id} to ({new_row}, {new_col})")
+        
+        # Physics will update in next update() cycle
+    
+    def _check_physics_win_condition(self):
+        """Check if all coins are collected in PHYSICS mode."""
+        if not self.grid_state:
+            return
+        
+        # Count uncollected coins
+        uncollected_coins = sum(1 for e in self.grid_state.entities 
+                               if e.type == EntityType.COIN and not e.is_collected)
+        
+        if uncollected_coins == 0 and not self.level_complete:
+            self.level_complete = True
+            self.level_complete_time = pygame.time.get_ticks()
+            
+            # Calculate stars based on move count
+            # For PHYSICS mode, use physics_move_count
+            move_count = self.physics_move_count
+            
+            # Simple star calculation (can be refined)
+            if move_count <= 10:
+                self.stars_earned = 3
+            elif move_count <= 20:
+                self.stars_earned = 2
+            else:
+                self.stars_earned = 1
+            
+            # Save progress
+            elapsed_time = (pygame.time.get_ticks() - self.start_time) / 1000
+            level_id = self.level_data.get('id', f'level_{self.current_level_index + 1:03d}')
+            self.save_system.complete_level(
+                level_id,
+                self.stars_earned,
+                move_count,
+                elapsed_time
+            )
+            
+            # Calculate gold earned
+            self.gold_earned_this_level = 10 + (self.stars_earned * 5)
+            
+            self.audio_manager.play_win()
+            print(f"Level Complete! Stars: {self.stars_earned}, Moves: {move_count}")
+    
+    # ========== END PHYSICS MODE INPUT HANDLING ==========
 
     def check_deadlock(self):
         """Check if player is stuck (no valid moves) and trigger game over"""
-        if not self.level_complete and not self.is_deadlocked:
+        if self.mode == "LEGACY" and not self.level_complete and not self.is_deadlocked:
             if len(self.block_sprites) > 0 and not self.grid_manager.has_valid_moves():
                 self.is_deadlocked = True
                 self.audio_manager.play_fail()
                 # Could add a visual indicator or message here
 
     def check_collection(self, block):
-        # Check for overlap with coins on ANY cell of the block
-        for coin in list(self.coin_sprites):  # Use list() to avoid modification during iteration
+        """Check for coin collection and remove block when empty (Drop Away style)"""
+        for coin in list(self.coin_sprites):
             for cell_x, cell_y in block.get_occupied_cells():
                 if cell_x == coin.grid_x and cell_y == coin.grid_y:
-                    # Check color match (using string keys from data)
                     if block.block_data['color'] == coin.coin_data['color']:
-                        # Collect!
-                        coin.kill() # Remove from all groups
+                        # Collect coin
+                        coin.kill()
                         block.counter -= 1
-                        block.update_appearance()
                         block.update_appearance()
                         self.audio_manager.play_collect()
                         
-                        # Track collection for UI
+                        # Track collection
                         if not hasattr(self, 'coins_collected_per_color'):
                             self.coins_collected_per_color = {}
                         self.coins_collected_per_color[block.block_data['color']] = \
                             self.coins_collected_per_color.get(block.block_data['color'], 0) + 1
                         
+                        # DROP AWAY: Block disappears when counter reaches 0
                         if block.counter <= 0:
-                            block.kill()
-                            self.selected_block = None
-                            # Remove from grid manager blocks list
+                            block.kill()  # Remove from all sprite groups
+                            if self.selected_block == block:
+                                self.selected_block = None
                             if block in self.grid_manager.blocks:
                                 self.grid_manager.blocks.remove(block)
                         break  # Only collect once per coin
@@ -539,23 +656,28 @@ class Game:
         self.check_win_condition()
 
     def check_win_condition(self):
-        # Check if all blocks are gone AND all coin queues are empty
-        queues_empty = all(not q['items'] for q in self.coin_queues)
+        """
+        DROP AWAY STYLE WIN CONDITION:
+        Level is complete when ALL BLOCKS have disappeared (been removed from game)
+        Blocks disappear when their counter reaches 0
+        """
+        if self.mode != "LEGACY":
+            return
         
-        if len(self.block_sprites) == 0 and len(self.coin_sprites) == 0 and queues_empty:
+        # Win condition: NO blocks remaining on screen
+        if len(self.block_sprites) == 0 and not self.level_complete:
             self.level_complete = True
             self.level_complete_time = pygame.time.get_ticks()
             
-            # Calculate stars based on move count (per GDD: sempre almeno 1 stella se completato)
+            # Calculate stars based on move count
             thresholds = self.level_data.get('stars_thresholds', [999, 999, 999])
-            # GDD: stars = 3 if moves <= threshold[0], 2 if <= threshold[1], 1 otherwise
             if len(thresholds) >= 3:
                 if self.move_count <= thresholds[0]:
                     self.stars_earned = 3
                 elif self.move_count <= thresholds[1]:
                     self.stars_earned = 2
                 else:
-                    self.stars_earned = 1  # Always at least 1 star for completion
+                    self.stars_earned = 1
             else:
                 self.stars_earned = 1
             
@@ -578,23 +700,48 @@ class Game:
         self.ui.update(dt)
         
         if self.mode == "PHYSICS" and self.state == self.STATE_PLAY:
-            # Run Physics Engine
+            # ========== PHYSICS MODE UPDATE FLOW ==========
+            # 1. Input is handled in handle_input() (already integrated)
+            # 2. Gameplay logic (move validation done in _move_entity_physics)
+            # 3. Physics Step
             if self.grid_state:
-                # Physics Step
                 self.grid_state, events = PhysicsEngine.update(self.grid_state)
-                # Handle Events
+                
+                # 4. Handle Physics Events (coin collection, etc.)
                 for event in events:
                     if event.startswith("COLLECT_"):
                         color = event.split("_")[1]
                         self.audio_manager.play_collect()
-                        # Update stats...
+                        # Update stats if needed
                 
-                # Sync Sprites with State (Simple full rebuild or positional update)
-                # For MVP, let's update sprite positions
+                # 5. Sync Sprites with State
                 self._sync_sprites_to_state()
+                
+                # 6. Check Win Condition (all coins collected)
+                self._check_physics_win_condition()
             
+            # 7. Update Timer
+            elapsed_time = (pygame.time.get_ticks() - self.start_time) / 1000
+            time_remaining = max(0, self.time_limit - elapsed_time)
+            
+            if time_remaining <= 0 and not self.level_complete:
+                self.handle_level_fail("Time's Up!")
+            elif time_remaining <= self.time_limit * 0.2:
+                self.timer_state = "CRITICAL"
+            elif time_remaining <= self.time_limit * 0.5:
+                self.timer_state = "WARNING"
+            else:
+                self.timer_state = "NORMAL"
+            
+            # 8. Sprite updates (animations, etc.)
             self.all_sprites.update()
+            
+            # 9. Check if level is complete and transition to victory
+            if self.level_complete and self.state == self.STATE_PLAY:
+                self.state = self.STATE_VICTORY
+            
             return
+            # ========== END PHYSICS MODE UPDATE FLOW ==========
 
         if self.state == self.STATE_PLAY:
             self.all_sprites.update()
@@ -668,9 +815,10 @@ class Game:
             # Calculate required coins per color from block counters
             # Per GDD: Total coins of color C = Sum of counters of blocks of color C
             coins_required_per_color = {}
-            for block in self.grid_manager.blocks:
-                color = block.block_data['color']
-                coins_required_per_color[color] = coins_required_per_color.get(color, 0) + block.counter
+            if self.mode == "LEGACY":
+                for block in self.grid_manager.blocks:
+                    color = block.block_data['color']
+                    coins_required_per_color[color] = coins_required_per_color.get(color, 0) + block.counter
             
             # Also count coins still in queues (they will be required)
             for queue in self.coin_queues:

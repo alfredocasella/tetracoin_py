@@ -1,0 +1,124 @@
+{
+  "id": "level_002",
+  "grid": {
+    "rows": 10,
+    "cols": 8
+  },
+  "entities": [
+    {
+      "id": "pb_0",
+      "type": "PIGGYBANK",
+      "color": "RED",
+      "row": 9,
+      "col": 6,
+      "is_falling": false,
+      "is_collected": false,
+      "capacity": 5,
+      "current_count": 0
+    },
+    {
+      "id": "pb_1",
+      "type": "PIGGYBANK",
+      "color": "BLUE",
+      "row": 9,
+      "col": 2,
+      "is_falling": false,
+      "is_collected": false,
+      "capacity": 5,
+      "current_count": 0
+    },
+    {
+      "id": "c_0",
+      "type": "COIN",
+      "color": "RED",
+      "row": 2,
+      "col": 6,
+      "is_falling": false,
+      "is_collected": false
+    },
+    {
+      "id": "c_1",
+      "type": "COIN",
+      "color": "RED",
+      "row": 7,
+      "col": 6,
+      "is_falling": false,
+      "is_collected": false
+    },
+    {
+      "id": "c_2",
+      "type": "COIN",
+      "color": "BLUE",
+      "row": 2,
+      "col": 2,
+      "is_falling": false,
+      "is_collected": false
+    },
+    {
+      "id": "c_3",
+      "type": "COIN",
+      "color": "RED",
+      "row": 0,
+      "col": 6,
+      "is_falling": false,
+      "is_collected": false
+    },
+    {
+      "id": "c_4",
+      "type": "COIN",
+      "color": "BLUE",
+      "row": 8,
+      "col": 2,
+      "is_falling": false,
+      "is_collected": false
+    },
+    {
+      "id": "supp_6_7",
+      "type": "SUPPORT",
+      "color": "GRAY",
+      "row": 6,
+      "col": 7,
+      "is_falling": false,
+      "is_collected": false
+    },
+    {
+      "id": "gate_3_0",
+      "type": "GATEWAY",
+      "color": "PURPLE",
+      "row": 3,
+      "col": 0,
+      "is_falling": false,
+      "is_collected": false,
+      "is_open": false,
+      "condition": "SWITCH"
+    },
+    {
+      "id": "fill_0_1",
+      "type": "FIXED_BLOCK",
+      "color": "GRAY",
+      "row": 0,
+      "col": 1,
+      "is_falling": false,
+      "is_collected": false
+    },
+    {
+      "id": "fill_6_0",
+      "type": "FIXED_BLOCK",
+      "color": "GRAY",
+      "row": 6,
+      "col": 0,
+      "is_falling": false,
+      "is_collected": false
+    },
+    {
+      "id": "fill_3_3",
+      "type": "FIXED_BLOCK",
+      "color": "GRAY",
+      "row": 3,
+      "col": 3,
+      "is_falling": false,
+      "is_collected": false
+    }
+  ],
+  "time_limit": 180
+}

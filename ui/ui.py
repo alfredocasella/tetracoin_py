@@ -3,20 +3,36 @@ import math
 from core.settings import *
 
 class UI:
-    def __init__(self):
-        self.font_large = pygame.font.Font(None, 48)
-        self.font_medium = pygame.font.Font(None, 32)
-        self.font_small = pygame.font.Font(None, 24)
+    def __init__(self, screen):
+        self.screen = screen
+        self.font = pygame.font.Font(None, 36)
+        self.small_font = pygame.font.Font(None, 24)
+        self.large_font = pygame.font.Font(None, 48)
+        
+        # Backward compatibility with old UI
+        self.font_large = self.large_font
+        self.font_medium = self.font
+        self.font_small = self.small_font
         self.font_tiny = pygame.font.Font(None, 18)
         
-        # Animation state for timer pulse
+        # DROP AWAY STYLE HUD COLORS
+        self.level_badge_color = (138, 43, 226)  # Purple
+        self.level_badge_border = (98, 0, 234)   # Darker purple
+        self.timer_bg_color = (138, 43, 226)     # Purple
+        self.timer_bar_green = (76, 175, 80)     # Green
+        self.timer_bar_yellow = (255, 193, 7)    # Yellow
+        self.timer_bar_red = (244, 67, 54)       # Red
+        self.restart_button_color = (150, 150, 150)  # Gray
+        
+        # Animation state
+        self.pulse_time = 0
         self.timer_pulse_time = 0
         
-        # Load icons (placeholders for now, drawing shapes instead)
-    
     def update(self, dt):
         """Update UI animations"""
-        self.timer_pulse_time += dt * 10  # Increment pulse animation
+        self.pulse_time += dt
+        # Backward compatibility
+        self.timer_pulse_time = self.pulse_time * 10
         
     def draw(self, screen, game_state):
         # 1. Draw Top HUD

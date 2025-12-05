@@ -1,0 +1,78 @@
+{
+  "id": "level_001",
+  "grid": {
+    "rows": 8,
+    "cols": 6
+  },
+  "entities": [
+    {
+      "id": "pb_0",
+      "type": "PIGGYBANK",
+      "color": "RED",
+      "row": 7,
+      "col": 3,
+      "is_falling": false,
+      "is_collected": false,
+      "capacity": 5,
+      "current_count": 0
+    },
+    {
+      "id": "pb_1",
+      "type": "PIGGYBANK",
+      "color": "BLUE",
+      "row": 7,
+      "col": 4,
+      "is_falling": false,
+      "is_collected": false,
+      "capacity": 5,
+      "current_count": 0
+    },
+    {
+      "id": "c_0",
+      "type": "COIN",
+      "color": "RED",
+      "row": 3,
+      "col": 3,
+      "is_falling": false,
+      "is_collected": false
+    },
+    {
+      "id": "c_1",
+      "type": "COIN",
+      "color": "BLUE",
+      "row": 0,
+      "col": 4,
+      "is_falling": false,
+      "is_collected": false
+    },
+    {
+      "id": "c_2",
+      "type": "COIN",
+      "color": "RED",
+      "row": 5,
+      "col": 3,
+      "is_falling": false,
+      "is_collected": false
+    },
+    {
+      "id": "supp_5_5",
+      "type": "SUPPORT",
+      "color": "GRAY",
+      "row": 5,
+      "col": 5,
+      "is_falling": false,
+      "is_collected": false
+    },
+    {
+      "id": "defl_1_5",
+      "type": "DEFLECTOR",
+      "color": "ORANGE",
+      "row": 1,
+      "col": 5,
+      "is_falling": false,
+      "is_collected": false,
+      "direction": "LEFT"
+    }
+  ],
+  "time_limit": 180
+}

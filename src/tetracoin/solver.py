@@ -156,7 +156,7 @@ class GameState:
 
 class TetracoinSolver:
     @staticmethod
-    def solve_bfs(initial_grid: GridState, max_depth: int = 20) -> Tuple[bool, int, List[Move]]:
+    def solve_bfs(initial_grid: GridState, max_depth: int = 20, max_nodes: int = 10000) -> Tuple[bool, int, List[Move]]:
         """
         BFS Solver.
         Returns: (found, steps, moves)
@@ -179,9 +179,15 @@ class TetracoinSolver:
             
         queue = deque([initial_state])
         visited: Set[GameStateData] = {initial_state.data}
+        nodes_explored = 0
         
         while queue:
+            if nodes_explored > max_nodes:
+                # print(f"Solver Limit Reached ({max_nodes} nodes)")
+                return False, 0, []
+                
             state = queue.popleft()
+            nodes_explored += 1
             
             if len(state.moves) >= max_depth:
                 continue

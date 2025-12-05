@@ -3,9 +3,9 @@ import os
 from typing import Dict, List
 
 class LevelLoader:
-    """Loads levels from JSON files in data/levels/"""
+    """Loads levels from JSON files"""
     
-    def __init__(self, levels_dir="data/levels"):
+    def __init__(self, levels_dir="data/levels"):  # Using stable legacy levels
         self.levels_dir = levels_dir
         self.levels_cache = {}
         self.level_count = 0
@@ -17,7 +17,7 @@ class LevelLoader:
             print(f"Warning: Levels directory '{self.levels_dir}' not found")
             return
         
-        json_files = [f for f in os.listdir(self.levels_dir) if f.endswith('.json')]
+        json_files = [f for f in os.listdir(self.levels_dir) if f.endswith('.json') and f != 'index.json']
         self.level_count = len(json_files)
         print(f"Found {self.level_count} level files")
     
@@ -38,8 +38,13 @@ class LevelLoader:
         with open(filepath, 'r') as f:
             level_data = json.load(f)
         
-        # Convert from new JSON format to old Python format
-        converted = self._convert_format(level_data)
+        # Check if this is v2 format (has 'grid' and 'entities' keys)
+        if 'grid' in level_data and 'entities' in level_data:
+            # V2 format - use directly, no conversion needed
+            converted = level_data
+        else:
+            # Legacy format - convert
+            converted = self._convert_format(level_data)
         
         # Cache it
         self.levels_cache[level_num] = converted
@@ -47,7 +52,7 @@ class LevelLoader:
         return converted
     
     def _convert_format(self, json_data: Dict) -> Dict:
-        """Convert new JSON format to the format expected by the game"""
+        """Convert old JSON format to the format expected by the game"""
         meta = json_data.get('meta', {})
         grid_size = meta.get('grid_size', [6, 6])
         
