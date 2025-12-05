@@ -23,6 +23,9 @@ SHAPES = {
     'Z': [(0, 0), (1, 0), (1, 1), (2, 1)],   # Alias for Z4
 }
 
+from src.tetracoin.utils import deprecated
+
+@deprecated("Replaced by spec.Entity types (PIGGYBANK, OBSTACLE)")
 class BlockSprite(pygame.sprite.Sprite):
     def __init__(self, block_data, groups, grid_offsets=None, tile_size=TILE_SIZE):
         super().__init__(groups)

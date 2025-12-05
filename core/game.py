@@ -6,6 +6,7 @@ from ui.ui import UI
 from core.audio_manager import AudioManager
 from core.level_loader import LevelLoader
 from core.save_system import SaveSystem
+from src.tetracoin.spec import GridState, EntityType, ColorType, PhysicsEngine, Entity, Coin, PiggyBank, Obstacle, FixedBlock
 
 class Game:
     def __init__(self):
@@ -33,6 +34,115 @@ class Game:
         self.current_level_index = 0
         self.gold_earned_this_level = 0
 
+    def _init_physics_level(self):
+        """Initialize the game state from the new spec level data."""
+        print("Initializing Physics Level...")
+        rows = self.level_data['grid']['rows']
+        cols = self.level_data['grid']['cols']
+        
+        # Create GridState
+        self.grid_state = GridState(rows=rows, cols=cols)
+        
+        # Convert entities JSON to Dataclasses
+        for e_data in self.level_data['entities']:
+            etype = EntityType(e_data['type'])
+            color = ColorType(e_data['color'])
+            
+            if etype == EntityType.COIN:
+                entity = Coin(id=e_data['id'], row=e_data['row'], col=e_data['col'], color=color)
+            elif etype == EntityType.PIGGYBANK:
+                entity = PiggyBank(id=e_data['id'], row=e_data['row'], col=e_data['col'], color=color)
+                entity.capacity = e_data.get('capacity', 5)
+                entity.current_count = e_data.get('current_count', 0)
+            elif etype == EntityType.OBSTACLE:
+                entity = Obstacle(id=e_data['id'], row=e_data['row'], col=e_data['col'], color=color)
+            elif etype == EntityType.FIXED_BLOCK:
+                entity = FixedBlock(id=e_data['id'], row=e_data['row'], col=e_data['col'], color=color)
+            
+            self.grid_state.entities.append(entity)
+            
+        # Init visual environment
+        max_grid_width = SCREEN_WIDTH - 20
+        max_grid_height = GRID_AREA_HEIGHT - 20
+        tile_size_w = max_grid_width // cols
+        tile_size_h = max_grid_height // rows
+        self.tile_size = min(TILE_SIZE, tile_size_w, tile_size_h)
+        
+        grid_pixel_width = cols * self.tile_size
+        grid_pixel_height = rows * self.tile_size
+        global GRID_OFFSET_X, GRID_OFFSET_Y
+        GRID_OFFSET_X = (SCREEN_WIDTH - grid_pixel_width) // 2
+        GRID_OFFSET_Y = TOP_HUD_HEIGHT + (GRID_AREA_HEIGHT - grid_pixel_height) // 2
+        
+        # Create Sprites
+        self.all_sprites = pygame.sprite.Group()
+        self.coin_sprites = pygame.sprite.Group()
+        self.block_sprites = pygame.sprite.Group() # Reuse block sprites for non-coins?
+        
+        self.entity_sprite_map = {} # Map entity_id -> sprite
+        self._sync_sprites_to_state(rebuild=True)
+        
+    def _sync_sprites_to_state(self, rebuild=False):
+        """Synchronize Pygame sprites with the logical GridState."""
+        if rebuild:
+            self.all_sprites.empty()
+            self.coin_sprites.empty()
+            self.block_sprites.empty()
+            self.entity_sprite_map.clear()
+            
+            for entity in self.grid_state.entities:
+                if entity.is_collected:
+                    continue
+                    
+                # Setup data dict expected by sprites
+                # We reuse existing Sprite classes for now, or adapt them.
+                # CoinSprite expects {'pos': (col, row), 'color': ...}
+                pos = (entity.col, entity.row)
+                
+                if entity.type == EntityType.COIN:
+                    data = {'pos': pos, 'color': entity.color.value}
+                    sprite = CoinSprite(data, [self.all_sprites, self.coin_sprites],
+                                      grid_offsets=(GRID_OFFSET_X, GRID_OFFSET_Y), tile_size=self.tile_size)
+                    self.entity_sprite_map[entity.id] = sprite
+                    
+                elif entity.type == EntityType.PIGGYBANK:
+                    # Reuse BlockSprite for PiggyBank for now?
+                    # Or create a new specific sprite.
+                    # BlockSprite expects {'start_pos': (col, row), 'color': ..., 'count': ...}
+                    data = {
+                        'start_pos': pos,
+                        'color': entity.color.value,
+                        'count': f"{entity.current_count}/{entity.capacity}", # Display capacity?
+                        'shape': 'O4' # Just a square/block
+                    }
+                    sprite = BlockSprite(data, [self.all_sprites, self.block_sprites],
+                                       grid_offsets=(GRID_OFFSET_X, GRID_OFFSET_Y), tile_size=self.tile_size)
+                    # Override shape to single cell if needed
+                    sprite.shape_cells = [(0,0)]
+                    sprite.update_appearance()
+                    self.entity_sprite_map[entity.id] = sprite
+                    
+                elif entity.type == EntityType.OBSTACLE:
+                     # Obstacle visual
+                     pass
+        else:
+            # Positional update only
+            for entity in self.grid_state.entities:
+                if entity.is_collected:
+                    if entity.id in self.entity_sprite_map:
+                        self.entity_sprite_map[entity.id].kill()
+                        del self.entity_sprite_map[entity.id]
+                    continue
+                    
+                if entity.id in self.entity_sprite_map:
+                    sprite = self.entity_sprite_map[entity.id]
+                    # Direct position update (bypass animation for now)
+                    sprite.grid_x = entity.col
+                    sprite.grid_y = entity.row
+                    # Manually update rect if we bypass Sprite.update logic
+                    sprite.rect.x = GRID_OFFSET_X + entity.col * self.tile_size
+                    sprite.rect.y = GRID_OFFSET_Y + entity.row * self.tile_size - (15 if entity.type == EntityType.COIN else 0)
+
     def start_game(self):
         self.state = self.STATE_PLAY
         self.load_level(self.current_level_index)
@@ -57,6 +167,23 @@ class Game:
             self.state = self.STATE_MENU
             return
             
+        if 'entities' in self.level_data:
+             # NEW SPEC DETECTED
+             self.mode = "PHYSICS"
+             self._init_physics_level()
+             return
+
+        # LEGACY MODE FALLBACK
+        self.mode = "LEGACY"
+        # Check if new spec level
+        if isinstance(self.level_data, dict) and 'entities' in self.level_data:
+             # NEW SPEC DETECTED
+             self.mode = "PHYSICS"
+             self._init_physics_level()
+             return
+
+        # LEGACY MODE FALLBACK
+        self.mode = "LEGACY"
         self.grid_manager = GridManager(self.level_data)
         self.grid_manager._game_ref = self  # Store reference for coin collision check
         
@@ -447,10 +574,28 @@ class Game:
             
             self.audio_manager.play_win()
 
-    def update(self, dt):
         # Update UI animations (needed for timer pulse)
         self.ui.update(dt)
         
+        if self.mode == "PHYSICS" and self.state == self.STATE_PLAY:
+            # Run Physics Engine
+            if self.grid_state:
+                # Physics Step
+                self.grid_state, events = PhysicsEngine.update(self.grid_state)
+                # Handle Events
+                for event in events:
+                    if event.startswith("COLLECT_"):
+                        color = event.split("_")[1]
+                        self.audio_manager.play_collect()
+                        # Update stats...
+                
+                # Sync Sprites with State (Simple full rebuild or positional update)
+                # For MVP, let's update sprite positions
+                self._sync_sprites_to_state()
+            
+            self.all_sprites.update()
+            return
+
         if self.state == self.STATE_PLAY:
             self.all_sprites.update()
             
@@ -548,6 +693,13 @@ class Game:
                     
                     self.objectives[color] = required
             
+            if self.mode == "PHYSICS":
+                # In physics mode, grid is drawn based on grid_state
+                # We can reuse draw_grid if we adapt it or just rely on sprites and background
+                self.draw_grid(screen) # Needs adaptation for dynamic size?
+                self.all_sprites.draw(screen)
+                return
+
             self.ui.draw(screen, self)
             
             # Victory message is now handled by STATE_VICTORY, so we don't draw it here

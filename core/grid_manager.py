@@ -1,3 +1,6 @@
+from src.tetracoin.utils import deprecated
+
+@deprecated("Replaced by spec.GridState and spec.PhysicsEngine")
 class GridManager:
     def __init__(self, level_data):
         self.cols = level_data['grid_cols']

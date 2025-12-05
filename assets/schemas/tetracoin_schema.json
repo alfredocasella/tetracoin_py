@@ -1,0 +1,121 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://tetracoin.game/schemas/level.schema.json",
+    "title": "Tetracoin Level/State Schema",
+    "description": "Formal definition of a Tetracoin game state or level configuration",
+    "type": "object",
+    "required": [
+        "version",
+        "grid",
+        "entities"
+    ],
+    "properties": {
+        "version": {
+            "type": "string",
+            "description": "Schema version, e.g. '1.0'",
+            "pattern": "^[0-9]+\\.[0-9]+$"
+        },
+        "meta": {
+            "type": "object",
+            "properties": {
+                "level_id": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "author": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "time_limit": {
+                    "type": "integer",
+                    "minimum": 0
+                },
+                "star_thresholds": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    },
+                    "minItems": 1
+                }
+            }
+        },
+        "grid": {
+            "type": "object",
+            "required": [
+                "rows",
+                "cols"
+            ],
+            "properties": {
+                "rows": {
+                    "type": "integer",
+                    "minimum": 3
+                },
+                "cols": {
+                    "type": "integer",
+                    "minimum": 3
+                }
+            }
+        },
+        "entities": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "required": [
+                    "id",
+                    "type",
+                    "row",
+                    "col",
+                    "color"
+                ],
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "type": {
+                        "type": "string",
+                        "enum": [
+                            "COIN",
+                            "PIGGYBANK",
+                            "OBSTACLE",
+                            "FIXED_BLOCK"
+                        ]
+                    },
+                    "color": {
+                        "type": "string",
+                        "enum": [
+                            "RED",
+                            "BLUE",
+                            "GREEN",
+                            "YELLOW",
+                            "PURPLE",
+                            "ORANGE",
+                            "GRAY"
+                        ]
+                    },
+                    "row": {
+                        "type": "integer",
+                        "minimum": 0
+                    },
+                    "col": {
+                        "type": "integer",
+                        "minimum": 0
+                    },
+                    "capacity": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "description": "For PIGGYBANK only"
+                    },
+                    "current_count": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "description": "For PIGGYBANK only"
+                    }
+                }
+            }
+        }
+    }
+}
