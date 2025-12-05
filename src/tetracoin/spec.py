@@ -137,6 +137,8 @@ class GridState:
     rows: int
     cols: int
     entities: List[Entity] = field(default_factory=list)
+    difficulty_tier: str = "UNKNOWN"
+    difficulty_score: float = 0.0
     
     def get_entity_at(self, row: int, col: int) -> Optional[Entity]:
         for e in self.entities:

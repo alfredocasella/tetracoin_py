@@ -11,6 +11,7 @@ from src.tetracoin.validation import ValidationEngine
 from src.tetracoin.validation import ValidationEngine
 from src.tetracoin.coin_placer import CoinPlacer
 from src.tetracoin.flow_control import FlowControlObstacleAdder
+from src.tetracoin.difficulty import TetracoinDifficultyAnalyzer
 
 class TetracoinGridGenerator:
     """
@@ -37,7 +38,7 @@ class TetracoinGridGenerator:
             random.seed(seed)
             
     def generate(self, max_attempts: int = 50) -> Optional[GridState]:
-        """Generate a valid grid."""
+        """Generate a valid grid with analyzed difficulty."""
         
         for attempt in range(max_attempts):
             grid = self._attempt_generation()
@@ -104,9 +105,23 @@ class TetracoinGridGenerator:
         # Full validation: Check if solvable
         # Limit moves based on difficulty?
         max_depth = 5 + self.difficulty * 2 # Scopes: 7 to 25 moves
-        solution = ValidationEngine.find_solution(grid, max_moves=max_depth)
+        # ValidationEngine.find_solution returns List[str] (move descriptions), 
+        # but DifficultyAnalyzer expects List[Move] objects.
+        # We need validation to return the Move objects or the full result tuple.
+        # Let's use Solver directly here to get moves since Validation.find_solution converts to str.
+        from src.tetracoin.solver import TetracoinSolver, GameState
         
-        if not solution:
+        found, steps, moves = TetracoinSolver.solve_bfs(GridState(rows=grid.rows, cols=grid.cols, entities=grid.entities), max_depth=max_depth)
+        
+        if not found:
             return None # Unsolvable within bounds
+            
+        # Analyze difficulty
+        report = TetracoinDifficultyAnalyzer.analyze(grid, moves)
+        grid.difficulty_tier = report.tier.name
+        grid.difficulty_score = report.score
+        
+        # Debug print
+        # print(TetracoinDifficultyAnalyzer.pretty_print(report))
             
         return grid
