@@ -3,7 +3,7 @@ import logging
 import sys
 import os
 
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 
 from src.tetracoin.level_generator import TetracoinLevelGenerator
 from src.tetracoin.level_generator_spec import TetracoinGenerationConfig, DifficultyLevel, TetracoinLevel
