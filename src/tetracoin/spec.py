@@ -131,7 +131,6 @@ class Trap(Entity):
         d = super().to_dict()
         d.update({"subtype": self.subtype})
         return d
-
 @dataclass
 class GridState:
     """Snapshot of the entire grid state."""
