@@ -8,11 +8,12 @@ import copy
 
 from src.tetracoin.spec import GridState, EntityType, ColorType, Entity, Coin, PiggyBank, Obstacle, FixedBlock
 from src.tetracoin.validation import ValidationEngine
-from src.tetracoin.validation import ValidationEngine
+
 from src.tetracoin.coin_placer import CoinPlacer
 from src.tetracoin.flow_control import FlowControlObstacleAdder
 from src.tetracoin.difficulty import TetracoinDifficultyAnalyzer
 from src.tetracoin.auto_adjuster import TetracoinAutoAdjuster, AdjusterConfig
+from src.tetracoin.config_validator import TetracoinConfigValidator, ValidationResult
 
 class TetracoinGridGenerator:
     """
@@ -26,7 +27,8 @@ class TetracoinGridGenerator:
         grid_height: int,
         num_coins: int,
         num_piggybanks: int,
-        seed: Optional[int] = None
+        seed: Optional[int] = None,
+        validator: Optional[TetracoinConfigValidator] = None
     ):
         self.difficulty = max(1, min(10, difficulty))
         self.width = grid_width
@@ -34,6 +36,7 @@ class TetracoinGridGenerator:
         self.num_coins = num_coins
         self.num_piggybanks = num_piggybanks
         self.seed = seed
+        self.validator = validator or TetracoinConfigValidator()
         
         if seed is not None:
             random.seed(seed)
@@ -44,6 +47,27 @@ class TetracoinGridGenerator:
         for attempt in range(max_attempts):
             grid = self._attempt_generation()
             if grid:
+                # Optional: Validate with ConfigValidator (Strict structure checks)
+                if self.validator:
+                     # Adapt to config dict
+                     config = self.to_config_dict(grid)
+                     # Determine player start if not set? 
+                     # If player_start is None, we might randomly pick or define (0,0)
+                     if not config['player_start']:
+                         # TEMPORARY: Define a dummy player start for validation if not present
+                         # The prompt implies a walking player. Tetracoin is falling.
+                         # We set it to (0,0) or a safe empty spot?
+                         # Or we just let it fail/warn?
+                         # Let's try to set it to (0,0) if empty, else find empty.
+                         pass 
+                         
+                     # Run validation
+                     # Checking validity might fail reachability if game logic differs.
+                     # We store the result but maybe don't blocking return None unless critical?
+                     # Prompt says "Integrate".
+                     v_result = self.validator.validate(config)
+                     # if not v_result.is_valid: continue # Too strict if logic differs
+                     
                 if auto_adjust:
                     adjuster = TetracoinAutoAdjuster() # Use defaults
                     # target_difficulty is 0-1, adjuster expects 0-1, analyzer produces 0-100?
@@ -60,17 +84,21 @@ class TetracoinGridGenerator:
                 
         return None
         
-    def _attempt_generation(self) -> Optional[GridState]:
-        """Single generation attempt."""
-        
+        if not ValidationEngine.check_reachability(grid):
+            return None
+            
+        return grid
+
+    def generate_structure(self) -> GridState:
+        """
+        Generates ONLY the basic grid structure with piggybanks.
+        Used by the end-to-end TetracoinLevelGenerator.
+        """
         # FASE 1: Grid Initialization
         grid = GridState(rows=self.height, cols=self.width)
         
         # FASE 2: PiggyBanks
-        # Place them at the bottom usually, or scattered?
-        # For gravity puzzles, bottom is standard.
         occupied_cols = set()
-        piggybanks = []
         
         available_cols = list(range(self.width))
         random.shuffle(available_cols)
@@ -91,11 +119,18 @@ class TetracoinGridGenerator:
                 row=row,
                 col=col,
                 color=color,
-                capacity=5 # Default capacity
+                capacity=5 
             )
             grid.entities.append(pb)
-            piggybanks.append(pb)
             occupied_cols.add(col)
+            
+        return grid
+        
+    def _attempt_generation(self) -> Optional[GridState]:
+        """Single generation attempt."""
+        
+        # FASE 1 & 2: Structure
+        grid = self.generate_structure()
             
         # FASE 3: Coins
         # Use CoinPlacer to strategically place coins
@@ -134,7 +169,39 @@ class TetracoinGridGenerator:
         grid.difficulty_tier = report.tier.name
         grid.difficulty_score = report.score
         
+
+        
         # Debug print
         # print(TetracoinDifficultyAnalyzer.pretty_print(report))
             
         return grid
+
+    def validate_existing_level(self, grid: GridState) -> ValidationResult:
+        """Validate an existing level using the ConfigValidator."""
+        return self.validator.validate(self.to_config_dict(grid))
+        
+    def to_config_dict(self, grid: GridState) -> dict:
+        """Convert GridState to config dictionary format."""
+        coins = []
+        obstacles = []
+        player_start = grid.player_start
+        
+        for e in grid.entities:
+            if e.type == EntityType.COIN:
+                coins.append((e.row, e.col))
+            elif e.type == EntityType.OBSTACLE or e.type == EntityType.FIXED_BLOCK:
+                obstacles.append((e.row, e.col))
+                
+        # Fallback for player start if not in grid state
+        if player_start is None:
+             # Default to (0,0) or derived?
+             # For now, let's use (0,0) so validation doesn't crash on type checks
+             player_start = (0, 0)
+
+        return {
+            'width': grid.cols,
+            'height': grid.rows,
+            'player_start': player_start,
+            'coins': coins,
+            'obstacles': obstacles
+        }

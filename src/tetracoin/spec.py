@@ -137,6 +137,7 @@ class GridState:
     rows: int
     cols: int
     entities: List[Entity] = field(default_factory=list)
+    player_start: Optional[Tuple[int, int]] = None
     difficulty_tier: str = "UNKNOWN"
     difficulty_score: float = 0.0
     
