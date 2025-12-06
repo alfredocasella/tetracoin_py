@@ -1,4 +1,6 @@
 import pygame
+import sys
+import math  # For spawn queue pulse animation
 from core.settings import *
 from core.grid_manager import GridManager
 
@@ -187,7 +189,8 @@ class Game:
             
         # Create Coin Sprites (DROP AWAY STYLE: Static + Queue spawning)
         self.coin_queues = []  # RESTORED: Essential for Drop Away spawning!
-        coins_data = self.level_data['coins']
+        coins_data = self.level_data.get('coins', {})
+        
         if isinstance(coins_data, list):
             # Legacy format: list of coins (all static)
             for coin_data in coins_data:
@@ -201,12 +204,14 @@ class Game:
                          grid_offsets=(GRID_OFFSET_X, GRID_OFFSET_Y), tile_size=self.tile_size)
             
             # Queue spawning (DROP AWAY STYLE: continuous spawning from tube)
-            for queue_data in coins_data.get('queues', []):
+            queues_list = coins_data.get('queues', [])
+            for queue_data in queues_list:
                 self.coin_queues.append({
                     'pos': queue_data['pos'],
                     'items': list(queue_data['items'])
                 })
                 self.process_coin_queue(self.coin_queues[-1])
+        
 
     def start_game(self):
         self.state = self.STATE_PLAY
@@ -256,8 +261,12 @@ class Game:
         self.stars_earned = 0  # Initialize stars
         self.gold_earned_this_level = 0  # Initialize gold
         
-        # Timer & Lives
-        self.time_limit = self.level_data.get('time_limit', 180) # Default 3 mins
+        # Timer and objectives
+        # CRITICAL FIX: time_limit is in meta object, not root!
+        self.time_limit = self.level_data.get('meta', {}).get('time_limit', 180)
+        
+        self.start_time = pygame.time.get_ticks()
+        self.move_count = 0
         self.lives = 5 # Should load from save system
         self.timer_state = "NORMAL" # NORMAL, WARNING, CRITICAL
 
@@ -795,6 +804,10 @@ class Game:
 
             screen.fill(BG_COLOR)
             self.draw_grid(screen)
+            self.draw_grid_cells(screen)  # Draw grid cells
+            
+            # Draw spawn queues (Drop Away style)
+            self.draw_spawn_queues(screen)
             
             # Draw preview ghost if dragging
             if self.selected_block and self.selected_block.dragging and self.preview_pos:
@@ -924,6 +937,160 @@ class Game:
         
         # 3. Border (Slightly darker blue)
         pygame.draw.rect(screen, TRAY_BORDER, tray_rect, 4, border_radius=15)
+    
+    def draw_spawn_queues(self, screen):
+        """Draw spawn queue visualization (3D isometric DOOR - outside grid, 1 tile size)"""
+        if not hasattr(self, 'coin_queues') or not self.coin_queues:
+            return
+        
+        for queue in self.coin_queues:
+            if not queue['items']:
+                continue
+                
+            spawn_x, spawn_y = queue['pos']
+            
+            # Screen position of spawn cell
+            screen_x = GRID_OFFSET_X + spawn_x * self.tile_size
+            screen_y = GRID_OFFSET_Y + spawn_y * self.tile_size
+            center_x = screen_x + self.tile_size // 2
+            
+            # Position door OUTSIDE and ABOVE the grid
+            # Door is exactly 1 tile size in isometric view
+            door_size = self.tile_size
+            
+            # Position door above the spawn cell, outside grid boundary
+            door_center_x = center_x
+            door_bottom_y = GRID_OFFSET_Y - 10  # Just above grid
+            door_top_y = door_bottom_y - door_size
+            
+            # Isometric 3D door dimensions
+            door_width = int(door_size * 0.6)  # Narrower for door look
+            door_height = door_size
+            door_x = door_center_x - door_width // 2
+            door_y = door_top_y
+            
+            # 3D Isometric colors
+            door_front = (160, 110, 80)   # Light brown (front)
+            door_side = (120, 80, 60)     # Dark brown (side)
+            door_edge = (80, 50, 30)      # Very dark (edges)
+            window_color = (180, 200, 220)  # Light blue
+            
+            # Isometric depth
+            depth = int(door_size * 0.15)
+            
+            # 1. Draw LEFT SIDE (isometric 3D depth)
+            left_points = [
+                (door_x, door_y),
+                (door_x - depth, door_y - depth // 2),
+                (door_x - depth, door_y + door_height - depth // 2),
+                (door_x, door_y + door_height)
+            ]
+            pygame.draw.polygon(screen, door_side, left_points)
+            pygame.draw.polygon(screen, door_edge, left_points, 1)
+            
+            # 2. Draw TOP (isometric 3D depth)
+            top_points = [
+                (door_x, door_y),
+                (door_x - depth, door_y - depth // 2),
+                (door_x + door_width - depth, door_y - depth // 2),
+                (door_x + door_width, door_y)
+            ]
+            pygame.draw.polygon(screen, door_side, top_points)
+            pygame.draw.polygon(screen, door_edge, top_points, 1)
+            
+            # 3. Draw FRONT FACE
+            door_rect = pygame.Rect(door_x, door_y, door_width, door_height)
+            pygame.draw.rect(screen, door_front, door_rect, border_radius=4)
+            pygame.draw.rect(screen, door_edge, door_rect, width=2, border_radius=4)
+            
+            # 4. Draw window (centered, showing coins)
+            window_size = int(door_width * 0.65)
+            window_x = door_x + (door_width - window_size) // 2
+            window_y = door_y + int(door_height * 0.3)
+            window_rect = pygame.Rect(window_x, window_y, window_size, window_size)
+            pygame.draw.rect(screen, window_color, window_rect, border_radius=3)
+            pygame.draw.rect(screen, door_edge, window_rect, width=2, border_radius=3)
+            
+            # 5. Draw next 3 coins in window (stacked vertically)
+            coins_to_show = min(3, len(queue['items']))
+            if coins_to_show > 0:
+                coin_size = int(window_size * 0.28)
+                for i in range(coins_to_show):
+                    color_key = queue['items'][i]
+                    colors = COIN_COLORS.get(color_key, COIN_COLORS['YELLOW'])
+                    
+                    coin_cx = window_rect.centerx
+                    coin_cy = window_rect.y + 8 + (i * (coin_size + 3))
+                    
+                    # Tiny coin circle
+                    pygame.draw.circle(screen, colors['fill'], (coin_cx, coin_cy), coin_size // 2)
+                    pygame.draw.circle(screen, colors['border'], (coin_cx, coin_cy), coin_size // 2, 1)
+            
+            # 6. Door handle (3D, right side)
+            handle_x = door_x + door_width - 10
+            handle_y = door_y + door_height // 2
+            pygame.draw.circle(screen, (200, 180, 100), (handle_x, handle_y), 4)
+            pygame.draw.circle(screen, door_edge, (handle_x, handle_y), 4, 1)
+            # 3D depth
+            pygame.draw.circle(screen, (150, 130, 70), (handle_x - 1, handle_y - 1), 3)
+            
+            # 7. Arrow from door to spawn cell
+            arrow_color = (255, 200, 0)
+            # Arrow starts at bottom of door
+            arrow_start_y = door_bottom_y + 5
+            arrow_end_y = screen_y - 5
+            
+            # Vertical line
+            pygame.draw.line(screen, arrow_color, 
+                           (center_x, arrow_start_y), 
+                           (center_x, arrow_end_y), 3)
+            
+            # Arrow head pointing down
+            arrow_points = [
+                (center_x, arrow_end_y + 8),
+                (center_x - 6, arrow_end_y),
+                (center_x + 6, arrow_end_y)
+            ]
+            pygame.draw.polygon(screen, arrow_color, arrow_points)
+            pygame.draw.polygon(screen, door_edge, arrow_points, 1)
+            
+            # 8. Pulsing spawn indicator on spawn cell
+            pulse = abs(math.sin(pygame.time.get_ticks() / 500)) * 0.3 + 0.7
+            indicator_color = (255, 200, 0, int(180 * pulse))
+            pygame.draw.circle(screen, indicator_color, 
+                             (center_x, screen_y + self.tile_size // 2), 
+                             int(self.tile_size * 0.25 * pulse), 2)
+    
+    def draw_grid_cells(self, screen):
+        """Draw grid cells (was accidentally removed from draw_grid)"""
+        if not hasattr(self, 'level_data'):
+            return
+            
+        rows = self.level_data.get('grid_rows', 8)
+        cols = self.level_data.get('grid_cols', 6)
+        
+        # Drop Away style colors
+        CELL_BASE_COLOR = (200, 230, 250)  # Lighter blue for cells
+        CELL_BORDER_COLOR = (140, 180, 210)  # Darker blue for borders
+        
+        # Draw individual cells with 3D effect
+        for row in range(rows):
+            for col in range(cols):
+                x = GRID_OFFSET_X + col * self.tile_size
+                y = GRID_OFFSET_Y + row * self.tile_size
+                
+                # Cell with gradient (lighter at top, darker at bottom)
+                cell_rect = pygame.Rect(x + 2, y + 2, self.tile_size - 4, self.tile_size - 4)
+                
+                # Draw cell base
+                pygame.draw.rect(screen, CELL_BASE_COLOR, cell_rect, border_radius=5)
+                
+                # Draw border for 3D effect
+                pygame.draw.rect(screen, CELL_BORDER_COLOR, cell_rect, width=2, border_radius=5)
+                
+                # Add highlight on top edge for 3D depth
+                highlight_rect = pygame.Rect(x + 4, y + 4, self.tile_size - 8, 3)
+                pygame.draw.rect(screen, (255, 255, 255, 80), highlight_rect, border_radius=2)
         
         if self.mode == "PHYSICS":
             return # Entities are drawn by sprites

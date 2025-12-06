@@ -75,16 +75,24 @@ class LevelLoader:
                 'pos': tuple(coin['xy'])
             })
         
-        # Convert coin queues (entrances)
+        # Convert coin queues - check both 'queues' and 'entrances' keys
         queues = []
+        # First try 'queues' (new format)
+        for queue_data in coins_data.get('queues', []):
+            queues.append({
+                'pos': tuple(queue_data['pos']),
+                'items': [c.upper() for c in queue_data['items']]
+            })
+        # Then try 'entrances' (old format)
         for entrance in coins_data.get('entrances', []):
             queues.append({
                 'pos': tuple(entrance['xy']),
                 'items': [c.upper() for c in entrance['queue']]
             })
         
-        # Build final format
+        # Build final format - INCLUDE META!
         converted = {
+            'meta': meta,  # CRITICAL: Include full meta object
             'id': meta.get('id', 1),
             'grid_cols': grid_size[0],
             'grid_rows': grid_size[1],
