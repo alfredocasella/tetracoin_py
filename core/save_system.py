@@ -61,9 +61,22 @@ class SaveSystem:
             print(f"Error saving file: {e}")
             return False
     
-    def complete_level(self, level_id: int, stars: int, moves: int, time: float):
+    def complete_level(self, level_id, stars: int, moves: int, time: float):
         """Record level completion"""
-        level_key = str(level_id)
+        # Convert level_id to int if it's a string like 'level_001'
+        if isinstance(level_id, str):
+            # Extract number from string like 'level_001' or use as-is if already numeric string
+            if level_id.startswith('level_'):
+                level_num = int(level_id.split('_')[1])
+            else:
+                try:
+                    level_num = int(level_id)
+                except ValueError:
+                    level_num = 1  # Default fallback
+        else:
+            level_num = level_id
+        
+        level_key = str(level_num)
         
         # Get existing level data or create new
         if level_key not in self.data["levels"]:
@@ -104,8 +117,8 @@ class SaveSystem:
         self.data["player"]["total_time_played"] += time
         
         # Unlock next level
-        if level_id >= self.data["player"]["unlocked_levels"]:
-            self.data["player"]["unlocked_levels"] = level_id + 1
+        if level_num >= self.data["player"]["unlocked_levels"]:
+            self.data["player"]["unlocked_levels"] = level_num + 1
         
         self.save()
     

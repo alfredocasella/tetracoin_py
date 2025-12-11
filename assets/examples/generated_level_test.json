@@ -1,0 +1,244 @@
+{
+  "id": "generated_test",
+  "grid": {
+    "cols": 7,
+    "rows": 9
+  },
+  "entities": [
+    {
+      "id": "pb_0",
+      "type": "PIGGYBANK",
+      "color": "RED",
+      "row": 8,
+      "col": 1,
+      "is_falling": false,
+      "is_collected": false,
+      "capacity": 5,
+      "current_count": 0
+    },
+    {
+      "id": "pb_1",
+      "type": "PIGGYBANK",
+      "color": "BLUE",
+      "row": 8,
+      "col": 2,
+      "is_falling": false,
+      "is_collected": false,
+      "capacity": 5,
+      "current_count": 0
+    },
+    {
+      "id": "c_0",
+      "type": "COIN",
+      "color": "BLUE",
+      "row": 0,
+      "col": 2,
+      "is_falling": false,
+      "is_collected": false
+    },
+    {
+      "id": "c_1",
+      "type": "COIN",
+      "color": "RED",
+      "row": 5,
+      "col": 1,
+      "is_falling": false,
+      "is_collected": false
+    },
+    {
+      "id": "c_2",
+      "type": "COIN",
+      "color": "BLUE",
+      "row": 6,
+      "col": 2,
+      "is_falling": false,
+      "is_collected": false
+    },
+    {
+      "id": "c_3",
+      "type": "COIN",
+      "color": "BLUE",
+      "row": 3,
+      "col": 2,
+      "is_falling": false,
+      "is_collected": false
+    },
+    {
+      "id": "c_4",
+      "type": "COIN",
+      "color": "BLUE",
+      "row": 4,
+      "col": 2,
+      "is_falling": false,
+      "is_collected": false
+    },
+    {
+      "id": "c_5",
+      "type": "COIN",
+      "color": "RED",
+      "row": 0,
+      "col": 1,
+      "is_falling": false,
+      "is_collected": false
+    },
+    {
+      "id": "c_6",
+      "type": "COIN",
+      "color": "RED",
+      "row": 3,
+      "col": 1,
+      "is_falling": false,
+      "is_collected": false
+    },
+    {
+      "id": "c_7",
+      "type": "COIN",
+      "color": "RED",
+      "row": 1,
+      "col": 1,
+      "is_falling": false,
+      "is_collected": false
+    },
+    {
+      "id": "obs_0",
+      "type": "OBSTACLE",
+      "color": "GRAY",
+      "row": 5,
+      "col": 3,
+      "is_falling": false,
+      "is_collected": false
+    },
+    {
+      "id": "obs_1",
+      "type": "OBSTACLE",
+      "color": "GRAY",
+      "row": 2,
+      "col": 0,
+      "is_falling": false,
+      "is_collected": false
+    },
+    {
+      "id": "obs_2",
+      "type": "OBSTACLE",
+      "color": "GRAY",
+      "row": 2,
+      "col": 3,
+      "is_falling": false,
+      "is_collected": false
+    },
+    {
+      "id": "obs_3",
+      "type": "OBSTACLE",
+      "color": "GRAY",
+      "row": 4,
+      "col": 5,
+      "is_falling": false,
+      "is_collected": false
+    },
+    {
+      "id": "obs_4",
+      "type": "OBSTACLE",
+      "color": "GRAY",
+      "row": 1,
+      "col": 3,
+      "is_falling": false,
+      "is_collected": false
+    },
+    {
+      "id": "obs_5",
+      "type": "OBSTACLE",
+      "color": "GRAY",
+      "row": 0,
+      "col": 4,
+      "is_falling": false,
+      "is_collected": false
+    }
+  ],
+  "layout": [
+    [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ]
+  ],
+  "blocks": [],
+  "coins": {
+    "static": []
+  }
+}

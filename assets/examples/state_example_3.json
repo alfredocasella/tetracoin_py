@@ -1,0 +1,29 @@
+{
+    "version": "1.0",
+    "meta": {
+        "level_id": 99,
+        "name": "Full Bank Test"
+    },
+    "grid": {
+        "rows": 5,
+        "cols": 5
+    },
+    "entities": [
+        {
+            "id": "coin_blocked",
+            "type": "COIN",
+            "color": "GREEN",
+            "row": 2,
+            "col": 2
+        },
+        {
+            "id": "piggy_full",
+            "type": "PIGGYBANK",
+            "color": "GREEN",
+            "row": 3,
+            "col": 2,
+            "capacity": 2,
+            "current_count": 2
+        }
+    ]
+}

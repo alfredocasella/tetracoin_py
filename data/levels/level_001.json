@@ -7,7 +7,11 @@
       6,
       6
     ],
+<<<<<<< HEAD
     "time_limit": 120,
+=======
+    "time_limit": 10,
+>>>>>>> 5db67f2eedc748b12f9b4b6c8633d696020195aa
     "stars": [
       2,
       3,

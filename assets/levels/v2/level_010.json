@@ -1,0 +1,136 @@
+{
+  "id": "level_010",
+  "grid": {
+    "rows": 10,
+    "cols": 8
+  },
+  "entities": [
+    {
+      "id": "pb_0",
+      "type": "PIGGYBANK",
+      "color": "RED",
+      "row": 9,
+      "col": 6,
+      "is_falling": false,
+      "is_collected": false,
+      "capacity": 5,
+      "current_count": 0
+    },
+    {
+      "id": "pb_1",
+      "type": "PIGGYBANK",
+      "color": "BLUE",
+      "row": 9,
+      "col": 3,
+      "is_falling": false,
+      "is_collected": false,
+      "capacity": 5,
+      "current_count": 0
+    },
+    {
+      "id": "c_0",
+      "type": "COIN",
+      "color": "RED",
+      "row": 3,
+      "col": 6,
+      "is_falling": false,
+      "is_collected": false
+    },
+    {
+      "id": "c_1",
+      "type": "COIN",
+      "color": "BLUE",
+      "row": 2,
+      "col": 3,
+      "is_falling": false,
+      "is_collected": false
+    },
+    {
+      "id": "c_2",
+      "type": "COIN",
+      "color": "RED",
+      "row": 7,
+      "col": 6,
+      "is_falling": false,
+      "is_collected": false
+    },
+    {
+      "id": "c_3",
+      "type": "COIN",
+      "color": "BLUE",
+      "row": 1,
+      "col": 3,
+      "is_falling": false,
+      "is_collected": false
+    },
+    {
+      "id": "c_4",
+      "type": "COIN",
+      "color": "RED",
+      "row": 8,
+      "col": 6,
+      "is_falling": false,
+      "is_collected": false
+    },
+    {
+      "id": "supp_8_2",
+      "type": "SUPPORT",
+      "color": "GRAY",
+      "row": 8,
+      "col": 2,
+      "is_falling": false,
+      "is_collected": false
+    },
+    {
+      "id": "supp_5_1",
+      "type": "SUPPORT",
+      "color": "GRAY",
+      "row": 5,
+      "col": 1,
+      "is_falling": false,
+      "is_collected": false
+    },
+    {
+      "id": "defl_4_2",
+      "type": "DEFLECTOR",
+      "color": "ORANGE",
+      "row": 4,
+      "col": 2,
+      "is_falling": false,
+      "is_collected": false,
+      "direction": "RIGHT"
+    },
+    {
+      "id": "defl_0_2",
+      "type": "DEFLECTOR",
+      "color": "ORANGE",
+      "row": 0,
+      "col": 2,
+      "is_falling": false,
+      "is_collected": false,
+      "direction": "RIGHT"
+    },
+    {
+      "id": "gate_2_7",
+      "type": "GATEWAY",
+      "color": "PURPLE",
+      "row": 2,
+      "col": 7,
+      "is_falling": false,
+      "is_collected": false,
+      "is_open": false,
+      "condition": "SWITCH"
+    },
+    {
+      "id": "trap_5_5",
+      "type": "TRAP",
+      "color": "RED",
+      "row": 5,
+      "col": 5,
+      "is_falling": false,
+      "is_collected": false,
+      "subtype": "SPIKES"
+    }
+  ],
+  "time_limit": 180
+}

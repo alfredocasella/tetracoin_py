@@ -1,0 +1,30 @@
+{
+    "version": "1.0",
+    "meta": {
+        "level_id": 1,
+        "name": "First Drop",
+        "description": "Simple gravity test"
+    },
+    "grid": {
+        "rows": 8,
+        "cols": 6
+    },
+    "entities": [
+        {
+            "id": "coin_1",
+            "type": "COIN",
+            "color": "RED",
+            "row": 0,
+            "col": 2
+        },
+        {
+            "id": "piggy_1",
+            "type": "PIGGYBANK",
+            "color": "RED",
+            "row": 7,
+            "col": 2,
+            "capacity": 3,
+            "current_count": 0
+        }
+    ]
+}

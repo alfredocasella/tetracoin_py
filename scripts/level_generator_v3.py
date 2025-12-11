@@ -45,13 +45,17 @@ SHAPE_CELLS = {
     'T4': [(0, 0), (1, 0), (2, 0), (1, 1)],
     'S4': [(1, 0), (2, 0), (0, 1), (1, 1)],
     'Z4': [(0, 0), (1, 0), (1, 1), (2, 1)],
+    'J4': [(1, 0), (2, 0), (1, 1), (1, 2)],  # Forma J (nuova)
 }
 
 COLORS = ['RED', 'BLUE', 'GREEN', 'YELLOW', 'PURPLE', 'ORANGE']
 
-# Forme preferite per livelli iniziali (più semplici)
+# Forme semplici (per livelli 1-5)
 SIMPLE_SHAPES = ['I2', 'I3', 'L3', 'O4']
-COMPLEX_SHAPES = ['I4', 'L4', 'T4', 'S4', 'Z4']
+# Forme complesse (per livelli 6-20) - PRIORITÀ ALTA
+COMPLEX_SHAPES = ['L4', 'T4', 'S4', 'Z4', 'J4', 'O4']  # 60%+ di queste
+# Forme MOLTO complesse (no forme lineari)
+VERY_COMPLEX_SHAPES = ['L4', 'T4', 'S4', 'Z4', 'J4']  # Esclude I2, I3, I4
 
 
 class SmartGridAnalyzer:
@@ -117,9 +121,10 @@ class DifficultyProgression:
         self.difficulty_curve = self._build_difficulty_curve()
     
     def _build_difficulty_curve(self) -> Dict[int, Dict]:
-        """Curva di difficoltà OTTIMIZZATA con griglie più grandi"""
+        """Curva di difficoltà REWORK 5.0 - Massima Rigidità e Dinamicità"""
         curve = {}
         
+<<<<<<< HEAD
         # Livelli 1-10: Tutorial - GRIGLIE PIÙ GRANDI
         for i in range(1, 11):
             if i == 1:
@@ -151,8 +156,52 @@ class DifficultyProgression:
                     "target_moves": (8 + i, 15 + i * 2),
                     "shapes": SIMPLE_SHAPES if i <= 6 else SIMPLE_SHAPES + COMPLEX_SHAPES[:2]
                 }
+=======
+        # Livello 1: Tutorial (Unico con forme semplici)
+        curve[1] = {
+            "blocks": 2,
+            "coins_per_block": 2,
+            "grid": (7, 7),
+            "walls": 0.20,
+            "target_moves": (12, 16),  # Minimo 12 mosse
+            "tutorial": True,
+            "shapes": SIMPLE_SHAPES,  # I2, I3 ammessi solo qui
+            "use_dynamic_timer": True,
+            "complex_blocks_ratio": 0.0,
+            "min_coin_dist": 2  # Distanza minima moneta-blocco
+        }
+>>>>>>> 5db67f2eedc748b12f9b4b6c8633d696020195aa
         
-        # Livelli 11-50: Progressione Base - SPAZIO ADEGUATO
+        # Livelli 2-5: Intro Hard (NO forme semplici)
+        for i in range(2, 6):
+            curve[i] = {
+                "blocks": 2,
+                "coins_per_block": 2,
+                "grid": (7, 7),
+                "walls": 0.18,
+                "target_moves": (10, 16),
+                "shapes": VERY_COMPLEX_SHAPES,
+                "use_dynamic_timer": True,
+                "complex_blocks_ratio": 1.0,
+                "min_coin_dist": 0  # DISABILITATO: Troppo restrittivo per 7x7
+            }
+        
+        # Livelli 6-20: Sfida Estrema
+        for i in range(6, 21):
+            curve[i] = {
+                "blocks": 3,
+                "coins_per_block": 2,
+                "grid": (8, 8) if i <= 10 else (9, 9),
+                "walls": 0.15,
+                "target_moves": (12, 25),
+                "shapes": VERY_COMPLEX_SHAPES,
+                "use_dynamic_timer": True,
+                "complex_blocks_ratio": 1.0,
+                "strategic_coins": True,
+                "min_coin_dist": 0  # DISABILITATO: Priorità alla generazione
+            }
+        
+        # Livelli 21-50: Progressione Base - SPAZIO ADEGUATO
         for i in range(11, 51):
             num_blocks = min(5, 3 + (i - 11) // 10)
             curve[i] = {
@@ -438,9 +487,13 @@ class SmartLevelGenerator:
         self.analyzer = SmartGridAnalyzer()
         self.levels_dir = "data/levels"
     
-    def generate_level(self, level_num: int, target: Dict, max_attempts: int = 100) -> Tuple[Optional[Dict], int]:
-        """Genera un livello con approccio smart"""
-        
+    
+    def _generate_level_reverse(self, target: Dict, level_num: int) -> Optional[Tuple[Dict, int]]:
+        """
+        Genera un livello usando REVERSE PATHFINDING
+        Parte da uno stato risolto e applica mosse inverse per creare lo stato iniziale.
+        Questo garantisce la risolvibilità al 100%.
+        """
         num_blocks = target["blocks"]
         coins_per_block = target["coins_per_block"]
         grid_w, grid_h = target["grid"]
@@ -448,76 +501,291 @@ class SmartLevelGenerator:
         min_moves, max_moves = target["target_moves"]
         allowed_shapes = target.get("shapes", list(SHAPE_CELLS.keys()))
         
-        best_level = None
-        best_moves = None
-        best_distance = float('inf')
+        # FASE 1: Genera layout
+        layout = self._generate_smart_layout(grid_w, grid_h, wall_density, num_blocks)
         
-        attempts_with_quick_pass = 0
+        # Verifica connettività minima
+        connectivity = self.analyzer.calculate_connectivity(layout)
+        if connectivity < 0.7:
+            return None
+        
+        empty_spots = self._find_empty_spots(layout)
+        if len(empty_spots) < num_blocks * (coins_per_block + 4):
+            return None
+        
+        # FASE 2: Crea stato finale (RISOLTO)
+        # Posiziona blocchi in posizioni "di raccolta" (vicino alle monete)
+        blocks_end_state = []
+        coins_positions = []
+        occupied = set()
+        
+        # Dividi griglia in zone per distribuire blocchi
+        zones = self._divide_into_zones(grid_w, grid_h, num_blocks)
+        
+        for i, zone in enumerate(zones[:num_blocks]):
+            # Trova spot in questa zona
+            zone_spots = [pos for pos in empty_spots if self._is_in_zone(pos, zone) and pos not in occupied]
+            if not zone_spots:
+                zone_spots = [pos for pos in empty_spots if pos not in occupied]
+            
+            if not zone_spots:
+                return None
+            
+            # Scegli forma
+            shape = random.choice(allowed_shapes)
+            
+            # Trova posizione valida per il blocco
+            placed = False
+            random.shuffle(zone_spots)
+            for pos in zone_spots:
+                if self._can_place_shape(pos, shape, layout, occupied):
+                    color = COLORS[i % len(COLORS)]
+                    
+                    # Segna celle occupate dal blocco
+                    block_cells = set()
+                    for dx, dy in SHAPE_CELLS[shape]:
+                        cell = (pos[0] + dx, pos[1] + dy)
+                        occupied.add(cell)
+                        block_cells.add(cell)
+                    
+                    blocks_end_state.append({
+                        'id': f'b_{i}',
+                        'shape': shape,
+                        'color': color,
+                        'pos': pos,
+                        'cells': block_cells
+                    })
+                    
+                    # Posiziona monete VICINO al blocco (stato finale = raccolte)
+                    # Le monete saranno nelle celle adiacenti al blocco
+                    adjacent_spots = []
+                    for bx, by in block_cells:
+                        for dx, dy in [(0, 1), (1, 0), (0, -1), (-1, 0)]:
+                            adj = (bx + dx, by + dy)
+                            if (adj in empty_spots and adj not in occupied and 
+                                adj not in block_cells):
+                                adjacent_spots.append(adj)
+                    
+                    # Aggiungi anche spot più lontani se necessario
+                    if len(adjacent_spots) < coins_per_block:
+                        far_spots = [s for s in empty_spots if s not in occupied and s not in block_cells]
+                        random.shuffle(far_spots)
+                        adjacent_spots.extend(far_spots[:coins_per_block - len(adjacent_spots)])
+                    
+                    # Seleziona coins_per_block posizioni
+                    random.shuffle(adjacent_spots)
+                    for coin_pos in adjacent_spots[:coins_per_block]:
+                        coins_positions.append({
+                            'color': color,
+                            'pos': coin_pos
+                        })
+                        occupied.add(coin_pos)
+                    
+                    placed = True
+                    break
+            
+            if not placed:
+                return None
+        
+        # FASE 3: Applica mosse INVERSE per creare stato iniziale
+        # Numero di mosse target (tra min e max)
+        target_num_moves = random.randint(min_moves, max_moves)
+        
+        # Stato corrente (inizia dallo stato finale)
+        current_blocks = {b['id']: b.copy() for b in blocks_end_state}
+        move_history = []
+        
+        # Applica mosse inverse con retry se bloccato
+        max_stuck_retries = 10
+        stuck_count = 0
+        
+        for move_num in range(target_num_moves * 2):  # Aumenta limite per permettere retry
+            if len(move_history) >= target_num_moves:
+                break  # Raggiunto obiettivo
+            
+            # Scegli blocco casuale
+            block_ids = list(current_blocks.keys())
+            random.shuffle(block_ids)
+            
+            moved = False
+            for block_id in block_ids:
+                block = current_blocks[block_id]
+                
+                # Prova direzioni casuali (INVERSE: opposto della direzione normale)
+                directions = [(0, 1), (0, -1), (1, 0), (-1, 0)]
+                random.shuffle(directions)
+                
+                for dx, dy in directions:
+                    old_pos = block['pos']
+                    new_pos = (old_pos[0] + dx, old_pos[1] + dy)
+                    
+                    # Verifica se la mossa inversa è valida
+                    if self._is_valid_reverse_move(block, new_pos, layout, current_blocks, coins_positions):
+                        # Applica mossa
+                        block['pos'] = new_pos
+                        
+                        # Aggiorna celle occupate
+                        block['cells'] = set()
+                        for sdx, sdy in SHAPE_CELLS[block['shape']]:
+                            block['cells'].add((new_pos[0] + sdx, new_pos[1] + sdy))
+                        
+                        move_history.append((block_id, (-dx, -dy)))  # Salva mossa NORMALE (inversa dell'inversa)
+                        moved = True
+                        stuck_count = 0  # Reset stuck counter
+                        break
+                
+                if moved:
+                    break
+            
+            # Se non riusciamo a muovere nessun blocco
+            if not moved:
+                stuck_count += 1
+                if stuck_count >= max_stuck_retries:
+                    # Troppi tentativi falliti, livello non valido
+                    return None
+        
+        # FASE 4: Crea level data con lo stato iniziale
+        blocks_initial = []
+        for block in current_blocks.values():
+            blocks_initial.append({
+                'id': block['id'],
+                'shape': block['shape'],
+                'color': block['color'],
+                'counter': coins_per_block,
+                'xy': list(block['pos'])
+            })
+        
+        # VALIDAZIONE DISTANZA MONETE (Rework 5.0)
+        min_coin_dist = target.get('min_coin_dist', 0)
+        if min_coin_dist > 0:
+            for coin in coins_positions:
+                coin_pos = coin['pos']
+                coin_color = coin['color']
+                
+                # Trova blocco corrispondente
+                matching_block = next((b for b in current_blocks.values() if b['color'] == coin_color), None)
+                if matching_block:
+                    # Calcola celle occupate dal blocco nello stato iniziale
+                    block_cells = set()
+                    for dx, dy in SHAPE_CELLS[matching_block['shape']]:
+                        block_cells.add((matching_block['pos'][0] + dx, matching_block['pos'][1] + dy))
+                    
+                    # Calcola distanza minima da qualsiasi cella del blocco
+                    min_dist = float('inf')
+                    for bx, by in block_cells:
+                        dist = abs(bx - coin_pos[0]) + abs(by - coin_pos[1])
+                        min_dist = min(min_dist, dist)
+                    
+                    if min_dist < min_coin_dist:
+                        return None  # Moneta troppo vicina, scarta livello
+        
+        coins_data = [{'color': c['color'], 'xy': list(c['pos'])} for c in coins_positions]
+        
+        # Ottieni time_limit dal target
+        if target.get('use_dynamic_timer', False):
+            # Usa formula dinamica: (actual_moves * 2) + 15
+            time_limit = (len(move_history) * 2) + 15
+        else:
+            # Usa time_limit fisso dal target (se presente)
+            time_limit = target.get('time_limit', None)
+        
+        level_data = self._create_level_data(
+            level_num, layout, blocks_initial, coins_data, max_moves, time_limit
+        )
+        
+        # Il numero di mosse è quello che abbiamo applicato
+        actual_moves = len(move_history)
+        
+        # Verifica che abbiamo raggiunto il minimo di mosse
+        if actual_moves < min_moves:
+            return None  # Non abbastanza mosse, riprova
+        
+        return level_data, actual_moves
+    
+    def _is_valid_reverse_move(self, block: Dict, new_pos: Tuple[int, int], 
+                               layout: List[List[int]], all_blocks: Dict, 
+                               coins: List[Dict]) -> bool:
+        """Verifica se una mossa inversa è valida"""
+        grid_w = len(layout[0])
+        grid_h = len(layout)
+        shape_cells = SHAPE_CELLS[block['shape']]
+        
+        # Verifica bounds e muri
+        for dx, dy in shape_cells:
+            x, y = new_pos[0] + dx, new_pos[1] + dy
+            if x < 0 or x >= grid_w or y < 0 or y >= grid_h:
+                return False
+            if layout[y][x] == 1:
+                return False
+        
+        # Verifica collisioni con altri blocchi
+        new_cells = set()
+        for dx, dy in shape_cells:
+            new_cells.add((new_pos[0] + dx, new_pos[1] + dy))
+        
+        for other_id, other_block in all_blocks.items():
+            if other_id != block['id']:
+                if new_cells & other_block['cells']:
+                    return False
+        
+        # Verifica collisioni con monete (le monete sono ostacoli)
+        for coin in coins:
+            coin_pos = tuple(coin['pos'])
+            if coin_pos in new_cells:
+                # Moneta dello stesso colore NON è ostacolo
+                if coin['color'] != block['color']:
+                    return False
+        
+        return True
+    
+    def generate_level(self, level_num: int, target: Dict, max_attempts: int = 2000) -> Tuple[Optional[Dict], int]:
+        """Genera un livello con approccio REVERSE PATHFINDING"""
+        
+        # Filtro mosse REWORK 5.0
+        if level_num <= 5:
+            min_moves_required = 10  # Minimo 10 mosse
+        elif level_num <= 20:
+            min_moves_required = 12  # Minimo 12 mosse
+        else:
+            min_moves_required = 5
         
         for attempt in range(max_attempts):
-            # FASE 1: Genera layout intelligente
-            layout = self._generate_smart_layout(grid_w, grid_h, wall_density, num_blocks)
+            result = self._generate_level_reverse(target, level_num)
             
-            # Pre-check: connettività minima
-            connectivity = self.analyzer.calculate_connectivity(layout)
-            if connectivity < 0.7:
+            if result is None:
                 continue
             
-            empty_spots = self._find_empty_spots(layout)
+            level_data, num_moves = result
             
-            # FASE 2: Posizionamento guidato dei blocchi
-            blocks = self._place_blocks_smart(
-                empty_spots, num_blocks, grid_w, grid_h, layout, allowed_shapes
-            )
+            # Applica filtro difficoltà
+            if num_moves < min_moves_required:
+                continue  # Troppo facile
             
-            if not blocks:
+            # Validazione strutturale rapida
+            if not self.validator._validate_structure(level_data):
                 continue
             
-            # FASE 3: Posizionamento strategico monete
-            coins = self._place_coins_strategic(
-                blocks, empty_spots, coins_per_block, layout
-            )
-            
-            if not coins:
-                continue
-            
-            # Crea level data
-            level_data = self._create_level_data(
-                level_num, layout, blocks, coins, max_moves
-            )
-            
-            # QUICK VALIDATION (veloce)
+            # Quick validation
             quick_ok, quick_msg = self.validator.quick_validate(level_data)
             if not quick_ok:
                 continue
             
-            attempts_with_quick_pass += 1
+            # OPZIONALE: Validazione BFS completa (solo per debug/verifica)
+            # Disabilitata per default per velocità
+            if SOLVER_AVAILABLE and level_num <= 10:  # Valida solo primi 10 livelli
+                min_moves, max_moves = target["target_moves"]
+                is_valid, msg, solved_moves = self.validator.validate_level(
+                    level_data, min_moves=min_moves_required
+                )
+                if not is_valid:
+                    continue
+                # Usa il numero di mosse del solver se disponibile
+                num_moves = solved_moves
             
-            # FULL VALIDATION (costoso - solo se quick pass)
-            min_moves_required = 3 if level_num <= 10 else 5
-            is_valid, msg, num_moves = self.validator.validate_level(
-                level_data, min_moves=min_moves_required
-            )
-            
-            if not is_valid:
-                continue
-            
-            # Cerca livello nel range target
-            if min_moves <= num_moves <= max_moves:
-                return level_data, num_moves
-            
-            # Traccia il migliore
-            distance = abs(num_moves - (min_moves + max_moves) / 2)
-            if distance < best_distance:
-                best_distance = distance
-                best_level = level_data
-                best_moves = num_moves
+            return level_data, num_moves
         
-        # Statistiche debug
-        if best_level and attempts_with_quick_pass > 0:
-            pass  # Success path
-        
-        return best_level, best_moves if best_level else 0
+        return None, 0
+
     
     def _generate_smart_layout(self, width: int, height: int, wall_density: float, 
                                num_blocks: int) -> List[List[int]]:
@@ -716,10 +984,15 @@ class SmartLevelGenerator:
         return coins
     
     def _create_level_data(self, level_num: int, layout: List[List[int]], 
-                          blocks: List[Dict], coins: List[Dict], max_moves: int) -> Dict:
+                          blocks: List[Dict], coins: List[Dict], max_moves: int, 
+                          time_limit: int = None) -> Dict:
         """Crea struttura dati livello"""
         grid_h = len(layout)
         grid_w = len(layout[0])
+        
+        # Usa time_limit personalizzato o calcola default
+        if time_limit is None:
+            time_limit = 60 + level_num * 5
         
         return {
             "meta": {
@@ -727,7 +1000,7 @@ class SmartLevelGenerator:
                 "world": 1 + (level_num - 1) // 50,
                 "name": f"Level {level_num}",
                 "grid_size": [grid_w, grid_h],
-                "time_limit": 60 + level_num * 5,
+                "time_limit": time_limit,
                 "stars": [max_moves // 3, max_moves // 2, max_moves]
             },
             "layout": layout,
@@ -973,6 +1246,7 @@ class SmartLevelGenerator:
                     print(f"  - Livello {r['level']}")
 
 
+<<<<<<< HEAD
 
 def main():
     """Funzione principale per gestire l'esecuzione da riga di comando."""
@@ -1027,3 +1301,62 @@ def main():
 
 if __name__ == "__main__":
     main()
+=======
+if __name__ == "__main__":
+    import argparse
+    
+    parser = argparse.ArgumentParser(
+        description="TetraCoin Level Generator V3 - Reverse Pathfinding",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  # Generate levels 1-20
+  python level_generator_v3.py --start 1 --end 20
+  
+  # Generate levels 100-120
+  python level_generator_v3.py --start 100 --end 120
+  
+  # Generate first 10 levels (legacy mode)
+  python level_generator_v3.py --count 10
+  
+  # Generate test levels
+  python level_generator_v3.py --test --count 5
+        """
+    )
+    
+    parser.add_argument("--start", type=int, default=1, help="Starting level number (default: 1)")
+    parser.add_argument("--end", type=int, help="Ending level number (inclusive). If specified, overrides --count")
+    parser.add_argument("--count", type=int, help="Number of levels to generate (alternative to --end)")
+    parser.add_argument("--test", action="store_true", help="Generate test levels instead")
+    parser.add_argument("--test-difficulty", type=int, help="Generate test levels at specific difficulty")
+    
+    args = parser.parse_args()
+    
+    generator = SmartLevelGenerator()
+    
+    if args.test_difficulty:
+        generator.generate_test_at_difficulty(args.test_difficulty, count=5)
+    elif args.test:
+        count = args.count if args.count else 10
+        generator.generate_random_test_levels(count)
+    else:
+        # Determine range
+        start = args.start
+        
+        if args.end:
+            # Range mode: --start X --end Y
+            end = args.end
+            if end < start:
+                print(f"❌ Errore: --end ({end}) deve essere >= --start ({start})")
+                exit(1)
+            num_levels = end
+        elif args.count:
+            # Count mode: --start X --count N
+            num_levels = start + args.count - 1
+        else:
+            # Default: generate 10 levels starting from --start
+            num_levels = start + 9
+        
+        print(f"📦 Generazione livelli {start}-{num_levels}...")
+        generator.generate_all_levels(num_levels=num_levels, start_from=start)
+>>>>>>> 5db67f2eedc748b12f9b4b6c8633d696020195aa

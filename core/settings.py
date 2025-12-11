@@ -20,9 +20,8 @@ GRID_OFFSET_Y = TOP_HUD_HEIGHT + 15  # Reduced margin
 TILE_SIZE = 50  # Reduced from 52 to 50 for even more compact fit (7*50=350px)
 
 # Modern Cartoon Color Palette
-# Web Prototype Color Palette
-# Mockup Color Palette
-BG_COLOR = (225, 245, 254)  # Light Blue/Gray background #E1F5FE
+# Drop Away Style Colors
+BG_COLOR = (200, 230, 250)  # Light blue background like Drop Away
 
 # Header
 HEADER_BG = (106, 27, 154) # Purple #6A1B9A

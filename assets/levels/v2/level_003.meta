@@ -1,0 +1,22 @@
+{
+  "seed": "UNKNOWN",
+  "difficulty": "EASY",
+  "solution_length": 0,
+  "target_moves": 0,
+  "generation_stats": {
+    "level_id": "level_003",
+    "generation_attempts": 1,
+    "generation_time_seconds": 0.0021038055419921875,
+    "difficulty_score": 7.75,
+    "difficulty_tier": "EASY",
+    "solution_length": 0,
+    "num_coins": 3,
+    "num_obstacles": 0,
+    "grid_dimensions": [
+      6,
+      8
+    ],
+    "seed_used": null,
+    "timestamp": "2025-12-05T19:03:08.207963"
+  }
+}

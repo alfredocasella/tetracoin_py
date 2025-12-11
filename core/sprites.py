@@ -23,6 +23,9 @@ SHAPES = {
     'Z': [(0, 0), (1, 0), (1, 1), (2, 1)],   # Alias for Z4
 }
 
+from src.tetracoin.utils import deprecated
+
+@deprecated("Replaced by spec.Entity types (PIGGYBANK, OBSTACLE)")
 class BlockSprite(pygame.sprite.Sprite):
     def __init__(self, block_data, groups, grid_offsets=None, tile_size=TILE_SIZE):
         super().__init__(groups)
@@ -95,52 +98,55 @@ class BlockSprite(pygame.sprite.Sprite):
         # Get colors
         color_key = self.block_data['color']
         colors = BLOCK_COLORS.get(color_key, BLOCK_COLORS['YELLOW'])
+        # ========== DROP AWAY STYLE 3D BLOCKS ==========
+        # Enhanced rendering with gradients, shadows, and depth
         
-        # Mockup Style: "Hollow Tray"
-        # 1. Draw the "Floor" (Inner Shadow) - Darker color
-        # 2. Draw the "Walls" (Outer Border) - Main color, thick
+        color_key = self.block_data.get('color', 'YELLOW')
+        colors = BLOCK_COLORS.get(color_key, BLOCK_COLORS['YELLOW'])
         
         wall_color = colors['main']
         floor_color = colors['dark']
+        wall_thickness = 8
         
-        wall_thickness = 8 # Thick walls
+        # Pass 1: Draw shadow under block for 3D depth
+        shadow_offset = 4
+        for dx, dy in self.shape_cells:
+            cell_x = dx * self.tile_size
+            cell_y = dy * self.tile_size
+            shadow_rect = pygame.Rect(
+                cell_x + shadow_offset,
+                cell_y + shadow_offset,
+                self.tile_size,
+                self.tile_size
+            )
+            pygame.draw.rect(self.image, (0, 0, 0, 60), shadow_rect, border_radius=8)
         
-        # We need to draw the unified shape.
-        # Since we don't have a complex polygon merger, we'll draw per-cell
-        # but carefully to make it look unified.
-        
-        # 1. Draw Floor (The dark inner part)
-        # It should be inset by wall_thickness
-        
-        # Strategy: Draw full cells in Wall Color, then draw smaller cells in Floor Color on top
-        
-        # Pass 1: Draw Walls (Base)
+        # Pass 2: Draw Walls (Base) with gradient effect
         for dx, dy in self.shape_cells:
             cell_x = dx * self.tile_size
             cell_y = dy * self.tile_size
             
             # Draw full cell in wall color
-            # We add a small overlap to merge adjacent cells visually
             rect = pygame.Rect(cell_x, cell_y, self.tile_size, self.tile_size)
-            pygame.draw.rect(self.image, wall_color, rect)
+            pygame.draw.rect(self.image, wall_color, rect, border_radius=8)
             
-        # Pass 2: Draw Floor (Inner Dark Part)
-        # We only draw the floor if the side is NOT connected to another cell
-        # Actually, for a hollow tray look, the floor is continuous inside.
-        # So we draw the floor in the center of each cell, and connect them if neighbors exist.
-        
+            # Add highlight on top for 3D effect (lighter color)
+            highlight_color = tuple(min(255, c + 40) for c in wall_color)
+            highlight_rect = pygame.Rect(cell_x, cell_y, self.tile_size, self.tile_size // 3)
+            pygame.draw.rect(self.image, highlight_color, highlight_rect, border_radius=8)
+            
+        # Pass 3: Draw Floor (Inner Dark Part)
         for dx, dy in self.shape_cells:
             cell_x = dx * self.tile_size
             cell_y = dy * self.tile_size
             
-            # Inner rect for this cell
             inner_rect = pygame.Rect(
-                cell_x + wall_thickness, 
-                cell_y + wall_thickness, 
-                self.tile_size - 2 * wall_thickness, 
+                cell_x + wall_thickness,
+                cell_y + wall_thickness,
+                self.tile_size - 2 * wall_thickness,
                 self.tile_size - 2 * wall_thickness
             )
-            pygame.draw.rect(self.image, floor_color, inner_rect)
+            pygame.draw.rect(self.image, floor_color, inner_rect, border_radius=4)
             
             # Connect to neighbors (fill the gap in the wall)
             neighbors = {
@@ -186,20 +192,29 @@ class BlockSprite(pygame.sprite.Sprite):
         # For simplicity, let's pick the cell with max x + max y
         target_cell = max(self.shape_cells, key=lambda p: p[0] + p[1])
         
+        
+        # ========== DROP AWAY STYLE: COUNTER BADGE ==========
+        # Display counter prominently on the block
         if self.counter > 0:
-            badge_size = 20
+            # Larger badge for better visibility
+            badge_size = int(self.tile_size * 0.5)  # 50% of tile size
             bx = target_cell[0] * self.tile_size + self.tile_size - badge_size - 4
             by = target_cell[1] * self.tile_size + self.tile_size - badge_size - 4
             
-            # White rounded rect
-            badge_rect = pygame.Rect(bx, by, badge_size, badge_size)
-            pygame.draw.rect(self.image, (255, 255, 255), badge_rect, border_radius=5)
+            # White rounded rect with shadow
+            shadow_rect = pygame.Rect(bx + 2, by + 2, badge_size, badge_size)
+            pygame.draw.rect(self.image, (0, 0, 0, 100), shadow_rect, border_radius=8)
             
-            # Number
-            font = pygame.font.Font(None, 20)
+            badge_rect = pygame.Rect(bx, by, badge_size, badge_size)
+            pygame.draw.rect(self.image, (255, 255, 255), badge_rect, border_radius=8)
+            
+            # Number - larger and bolder
+            font_size = int(badge_size * 0.7)
+            font = pygame.font.Font(None, font_size)
             text = font.render(str(self.counter), True, (0, 0, 0))
             text_rect = text.get_rect(center=badge_rect.center)
             self.image.blit(text, text_rect)
+        # ========== END COUNTER BADGE ==========
 
     def _draw_3d_cell(self, x, y):
         # Deprecated, replaced by update_appearance container logic
@@ -247,22 +262,13 @@ class CoinSprite(pygame.sprite.Sprite):
         self.offset_y = grid_offsets[1] if grid_offsets else GRID_OFFSET_Y
         
         self.base_size = tile_size
-        # Increase height to accommodate the stack
-        self.image = pygame.Surface((self.base_size, self.base_size + 20), pygame.SRCALPHA)
+        # FIX: Make surface exactly tile_size to align with grid
+        self.image = pygame.Surface((self.base_size, self.base_size), pygame.SRCALPHA)
         self.rect = self.image.get_rect()
         
-        # Set initial position
-        # Adjust Y to align the bottom of the stack with the cell bottom
-        # The stack grows upwards, so the "base" of the stack should be at the cell's bottom area
+        # FIX: Position exactly on grid cell (no offset)
         self.rect.x = self.offset_x + self.grid_x * self.base_size
-        # Shift up slightly to center the visual weight or align bottom
-        # We want the bottom of the coin stack (at bottom_y in _generate) to align with cell bottom
-        # In _generate, bottom_y = height - 10.
-        # So visual bottom is at rect.y + height - 10.
-        # We want visual bottom at offset_y + (grid_y + 1) * tile_size - padding
-        # Let's just center it horizontally and align bottom with some padding
-        
-        self.rect.y = self.offset_y + self.grid_y * self.base_size - 15 
+        self.rect.y = self.offset_y + self.grid_y * self.base_size
         
         # Animation state
         self.original_y = self.rect.y
@@ -272,68 +278,119 @@ class CoinSprite(pygame.sprite.Sprite):
         self._generate_coin_image()
         
     def _generate_coin_image(self):
-        """Generate a stack of 3 coins using vector drawing"""
+        """Generate realistic gold coin stack with ridged edges (like reference image)"""
         self.image.fill((0, 0, 0, 0))
         
         color_key = self.coin_data['color']
         colors = COIN_COLORS.get(color_key, COIN_COLORS['YELLOW'])
         
+        # Gold coin colors
         fill_color = colors['fill']
-        # Use the border color defined in settings as the "side" (darker) color
-        side_color = colors['border'] 
-        # Create a darker outline color
-        outline_color = (
-            max(0, side_color[0] - 50),
-            max(0, side_color[1] - 50),
-            max(0, side_color[2] - 50)
-        )
+        border_color = colors['border']
         
-        # Coin dimensions
-        coin_w = self.base_size - 10 # Slight padding
-        coin_h = 12 # Thickness of the cylinder
-        oval_h = 14 # Height of the top/bottom ellipse (perspective)
-        
-        center_x = self.image.get_width() // 2
-        bottom_y = self.image.get_height() - 10
-        
-        # Draw stack of 3 coins (bottom to top)
+        # Stack of 3-4 coins
         num_coins = 3
-        stack_overlap = 8 # How much they overlap vertically
+        coin_diameter = int(self.base_size * 0.7)
+        coin_thickness = 6  # Thinner coins
         
+        center_x = self.base_size // 2
+        center_y = self.base_size // 2
+        
+        # Ellipse for isometric view
+        ellipse_width = coin_diameter
+        ellipse_height = int(coin_diameter * 0.3)
+        
+        # Random offsets for realistic stacking
+        import random
+        random.seed(self.grid_x * 100 + self.grid_y)
+        
+        # Calculate positions with slight tilt/cascade
+        total_height = num_coins * coin_thickness + (num_coins - 1) * 2
+        start_y = center_y - total_height // 2
+        
+        # Draw coins from bottom to top
         for i in range(num_coins):
-            # Calculate Y position for this coin
-            # i=0 is bottom, i=2 is top
-            y = bottom_y - (i * stack_overlap) - coin_h
+            # Position with slight offset for cascade effect
+            offset_x = random.randint(-4, 4) if i > 0 else 0
+            offset_y = i * (coin_thickness + 2)
             
-            # Rects for drawing
-            # Top face bounds
-            top_rect = pygame.Rect(center_x - coin_w//2, y, coin_w, oval_h)
-            # Bottom face bounds (for the cylinder bottom curve)
-            bottom_rect = pygame.Rect(center_x - coin_w//2, y + coin_h, coin_w, oval_h)
+            coin_x = center_x + offset_x
+            coin_y = start_y + offset_y
             
-            # 1. Draw Cylinder Body (Side)
-            # Rectangle part
-            body_rect = pygame.Rect(center_x - coin_w//2, y + oval_h//2, coin_w, coin_h)
-            pygame.draw.rect(self.image, side_color, body_rect)
+            # Shadow (only for bottom coin)
+            if i == 0:
+                shadow_rect = pygame.Rect(
+                    coin_x - ellipse_width // 2 + 3,
+                    coin_y + coin_thickness + 3,
+                    ellipse_width,
+                    ellipse_height
+                )
+                pygame.draw.ellipse(self.image, (0, 0, 0, 40), shadow_rect)
             
-            # Bottom curve (Ellipse)
-            pygame.draw.ellipse(self.image, side_color, bottom_rect)
+            # RIDGED EDGE (zigzag pattern on side)
+            # Draw multiple thin vertical lines for ridged effect
+            ridge_color = tuple(max(0, c - 60) for c in fill_color)
+            num_ridges = 20
             
-            # Side Outline (Vertical lines)
-            pygame.draw.line(self.image, outline_color, body_rect.topleft, body_rect.bottomleft, 2)
-            pygame.draw.line(self.image, outline_color, body_rect.topright, body_rect.bottomright, 2)
+            for r in range(num_ridges):
+                angle = (r / num_ridges) * 3.14159  # Half circle
+                x_offset = int((ellipse_width // 2) * (1 - abs(angle - 1.57) / 1.57))
+                
+                # Left side ridges
+                ridge_x = coin_x - ellipse_width // 2 + x_offset
+                ridge_y1 = coin_y + ellipse_height // 2
+                ridge_y2 = coin_y + coin_thickness + ellipse_height // 2
+                
+                if r % 2 == 0:  # Every other ridge is darker
+                    pygame.draw.line(self.image, ridge_color, 
+                                   (ridge_x, ridge_y1), (ridge_x, ridge_y2), 1)
             
-            # Bottom Curve Outline (Half ellipse)
-            pygame.draw.arc(self.image, outline_color, bottom_rect, math.pi, 0, 2)
+            # Main cylinder body (gradient from dark to light)
+            for y_offset in range(coin_thickness):
+                progress = y_offset / coin_thickness
+                body_color = tuple(
+                    int(ridge_color[c] + (fill_color[c] - ridge_color[c]) * progress)
+                    for c in range(3)
+                )
+                
+                body_rect = pygame.Rect(
+                    coin_x - ellipse_width // 2,
+                    coin_y + ellipse_height // 2 + y_offset,
+                    ellipse_width,
+                    1
+                )
+                pygame.draw.ellipse(self.image, body_color, body_rect)
             
-            # 2. Draw Top Face
-            pygame.draw.ellipse(self.image, fill_color, top_rect)
-            pygame.draw.ellipse(self.image, outline_color, top_rect, 2)
+            # Bottom ellipse (darker edge)
+            bottom_rect = pygame.Rect(
+                coin_x - ellipse_width // 2,
+                coin_y + coin_thickness,
+                ellipse_width,
+                ellipse_height
+            )
+            dark_edge = tuple(max(0, c - 40) for c in fill_color)
+            pygame.draw.ellipse(self.image, dark_edge, bottom_rect)
+            pygame.draw.ellipse(self.image, border_color, bottom_rect, 1)
             
-            # Highlight on top face (small white ellipse or arc)
-            highlight_rect = top_rect.inflate(-10, -6)
-            highlight_rect.y += 2
-            # pygame.draw.ellipse(self.image, (255, 255, 255, 100), highlight_rect)
+            # Top ellipse (shiny gold surface)
+            top_rect = pygame.Rect(
+                coin_x - ellipse_width // 2,
+                coin_y,
+                ellipse_width,
+                ellipse_height
+            )
+            
+            # Gradient on top surface
+            bright_gold = tuple(min(255, c + 30) for c in fill_color)
+            pygame.draw.ellipse(self.image, bright_gold, top_rect)
+            pygame.draw.ellipse(self.image, border_color, top_rect, 2)
+            
+            # Inner ring (embossed effect)
+            inner_ring = top_rect.inflate(-ellipse_width // 4, -ellipse_height // 4)
+            pygame.draw.ellipse(self.image, fill_color, inner_ring)
+            pygame.draw.ellipse(self.image, border_color, inner_ring, 1)
+            
+            # Removed: White highlight/glow and sparkles per user request
             
     def update(self):
         # Simple floating animation?
@@ -341,3 +398,65 @@ class CoinSprite(pygame.sprite.Sprite):
 
     def trigger_sparkle(self):
         pass
+
+class PiggyBankSprite(pygame.sprite.Sprite):
+    def __init__(self, data, groups, grid_offsets=None, tile_size=TILE_SIZE):
+        super().__init__(groups)
+        self.data = data
+        self.grid_x, self.grid_y = data['pos']
+        self.tile_size = tile_size
+        self.offset_x = grid_offsets[0] if grid_offsets else GRID_OFFSET_X
+        self.offset_y = grid_offsets[1] if grid_offsets else GRID_OFFSET_Y
+        
+        self.color_key = data['color']
+        self.current = data['current']
+        self.capacity = data['capacity']
+        
+        self.image = pygame.Surface((tile_size, tile_size), pygame.SRCALPHA)
+        self.rect = self.image.get_rect()
+        
+        # Position
+        self.rect.x = self.offset_x + self.grid_x * self.tile_size
+        self.rect.y = self.offset_y + self.grid_y * self.tile_size
+        
+        self.update_appearance()
+        
+    def update_appearance(self):
+        self.image.fill((0,0,0,0))
+        colors = BLOCK_COLORS.get(self.color_key, BLOCK_COLORS['YELLOW'])
+        main_color = colors['main']
+        dark_color = colors['dark']
+        
+        # Draw Container (Hollow box)
+        rect = pygame.Rect(0, 0, self.tile_size, self.tile_size)
+        pygame.draw.rect(self.image, main_color, rect, border_radius=8)
+        
+        # Inner dark area
+        inner_rect = rect.inflate(-10, -10)
+        pygame.draw.rect(self.image, dark_color, inner_rect, border_radius=4)
+        
+        # Draw "Glass" or Open front?
+        # Just text for now
+        font = pygame.font.Font(None, 24)
+        text = font.render(f"{self.current}/{self.capacity}", True, (255, 255, 255))
+        text_rect = text.get_rect(center=rect.center)
+        self.image.blit(text, text_rect)
+
+class ObstacleSprite(pygame.sprite.Sprite):
+    def __init__(self, data, groups, grid_offsets=None, tile_size=TILE_SIZE):
+        super().__init__(groups)
+        self.grid_x, self.grid_y = data['pos']
+        self.tile_size = tile_size
+        self.offset_x = grid_offsets[0] if grid_offsets else GRID_OFFSET_X
+        self.offset_y = grid_offsets[1] if grid_offsets else GRID_OFFSET_Y
+        
+        self.image = pygame.Surface((tile_size, tile_size), pygame.SRCALPHA)
+        self.rect = self.image.get_rect()
+        
+        self.rect.x = self.offset_x + self.grid_x * self.tile_size
+        self.rect.y = self.offset_y + self.grid_y * self.tile_size
+        
+        # Draw Gray Stone/Obstacle
+        pygame.draw.rect(self.image, (100, 100, 100), (0, 0, self.tile_size, self.tile_size), border_radius=5)
+        pygame.draw.rect(self.image, (150, 150, 150), (5, 5, self.tile_size-10, self.tile_size-10), border_radius=3)
+        pygame.draw.line(self.image, (50,50,50), (0,0), (self.tile_size, self.tile_size), 2)

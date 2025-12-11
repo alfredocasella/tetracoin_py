@@ -3,20 +3,36 @@ import math
 from core.settings import *
 
 class UI:
-    def __init__(self):
-        self.font_large = pygame.font.Font(None, 48)
-        self.font_medium = pygame.font.Font(None, 32)
-        self.font_small = pygame.font.Font(None, 24)
+    def __init__(self, screen):
+        self.screen = screen
+        self.font = pygame.font.Font(None, 36)
+        self.small_font = pygame.font.Font(None, 24)
+        self.large_font = pygame.font.Font(None, 48)
+        
+        # Backward compatibility with old UI
+        self.font_large = self.large_font
+        self.font_medium = self.font
+        self.font_small = self.small_font
         self.font_tiny = pygame.font.Font(None, 18)
         
-        # Animation state for timer pulse
+        # DROP AWAY STYLE HUD COLORS
+        self.level_badge_color = (138, 43, 226)  # Purple
+        self.level_badge_border = (98, 0, 234)   # Darker purple
+        self.timer_bg_color = (138, 43, 226)     # Purple
+        self.timer_bar_green = (76, 175, 80)     # Green
+        self.timer_bar_yellow = (255, 193, 7)    # Yellow
+        self.timer_bar_red = (244, 67, 54)       # Red
+        self.restart_button_color = (150, 150, 150)  # Gray
+        
+        # Animation state
+        self.pulse_time = 0
         self.timer_pulse_time = 0
         
-        # Load icons (placeholders for now, drawing shapes instead)
-    
     def update(self, dt):
         """Update UI animations"""
-        self.timer_pulse_time += dt * 10  # Increment pulse animation
+        self.pulse_time += dt
+        # Backward compatibility
+        self.timer_pulse_time = self.pulse_time * 10
         
     def draw(self, screen, game_state):
         # 1. Draw Top HUD
@@ -210,75 +226,45 @@ class UI:
         self.reset_btn_rect = pygame.Rect(item_spacing * 4 - 30, y_center - 30, 60, 60)
                 
     def draw_objectives_panel(self, screen, game_state):
-        # Glassmorphism Objectives Panel
-        panel_h = 60
-        panel_y = TOP_HUD_HEIGHT + 10
+        """Draw objectives panel showing required coins per color"""
+        if not hasattr(game_state, 'objectives') or not game_state.objectives:
+            return
         
-        # Title "Obiettivi" - Small and elegant
-        font_title = pygame.font.Font(None, 14)
-        title_surf = font_title.render("OBIETTIVI", True, TEXT_COLOR)
-        title_rect = title_surf.get_rect(center=(SCREEN_WIDTH // 2, panel_y))
-        screen.blit(title_surf, title_rect)
+        # Position at top center
+        panel_y = 120
+        panel_x = SCREEN_WIDTH // 2
         
-        # Objectives Container
-        container_y = panel_y + 15
+        # Calculate panel width based on number of objectives
+        num_objectives = len(game_state.objectives)
+        pill_width = 130  # Width of each pill
+        pill_spacing = 10  # Space between pills
+        total_width = (pill_width * num_objectives) + (pill_spacing * (num_objectives - 1))
         
-        # Calculate width
-        total_w = 0
-        gap = 15
+        start_x = panel_x - total_width // 2
         
-        # Prepare surfaces
-        pill_surfs = []
-        
-        for i, (color, required) in enumerate(game_state.objectives.items()):
-            collected = game_state.coins_collected_per_color.get(color, 0)
-            is_complete = collected >= required
+        # Draw each objective indicator
+        for i, (color_key, required) in enumerate(game_state.objectives.items()):
+            x = start_x + i * (pill_width + pill_spacing)
             
-            # Pill dimensions
-            pill_w = 90
-            pill_h = 32
+            # Get coin colors from settings
+            from core.settings import COIN_COLORS
+            colors = COIN_COLORS.get(color_key, COIN_COLORS['YELLOW'])
             
-            s_pill = pygame.Surface((pill_w, pill_h), pygame.SRCALPHA)
+            # Background pill shape (white with dark border for visibility)
+            pill_rect = pygame.Rect(x, panel_y, pill_width, 50)
+            pygame.draw.rect(screen, (255, 255, 255), pill_rect, border_radius=25)
+            pygame.draw.rect(screen, (100, 100, 100), pill_rect, width=3, border_radius=25)
             
-            # Background (Glass)
-            bg_color = (255, 255, 255, 150)
-            border_color = (255, 255, 255, 200)
-            if is_complete:
-                bg_color = (100, 255, 100, 150)
-                border_color = (100, 255, 100, 200)
-                
-            pygame.draw.rect(s_pill, bg_color, (0, 0, pill_w, pill_h), border_radius=16)
-            pygame.draw.rect(s_pill, border_color, (0, 0, pill_w, pill_h), 1, border_radius=16)
+            # Draw coin indicator (filled circle with border)
+            coin_center = (x + 25, panel_y + 25)
+            pygame.draw.circle(screen, colors['fill'], coin_center, 15)
+            pygame.draw.circle(screen, colors['border'], coin_center, 15, 3)
             
-            # Icon (Circle with color)
-            pygame.draw.circle(s_pill, COLORS.get(color, (200, 200, 200)), (16, 16), 8)
-            
-            # Text
-            font_obj = pygame.font.Font(None, 16)
-            text = f"{collected}/{required}"
-            text_surf = font_obj.render(text, True, TEXT_COLOR)
-            text_rect = text_surf.get_rect(midleft=(32, 16))
-            s_pill.blit(text_surf, text_rect)
-            
-            # Checkmark if complete
-            if is_complete:
-                # Simple checkmark
-                pygame.draw.line(s_pill, TEXT_COLOR, (pill_w - 20, 16), (pill_w - 16, 20), 2)
-                pygame.draw.line(s_pill, TEXT_COLOR, (pill_w - 16, 20), (pill_w - 10, 10), 2)
-            
-            pill_surfs.append(s_pill)
-            total_w += pill_w + gap
-            
-        if total_w > 0:
-            total_w -= gap # Remove last gap
-        
-        # Draw centered
-        start_x = (SCREEN_WIDTH - total_w) // 2
-        current_x = start_x
-        
-        for s in pill_surfs:
-            screen.blit(s, (current_x, container_y))
-            current_x += s.get_width() + gap
+            # Draw counter text (dark color for visibility)
+            counter_text = f"{required}"
+            counter_surface = self.font.render(counter_text, True, (40, 40, 40))
+            counter_rect = counter_surface.get_rect(center=(x + pill_width - 40, panel_y + 25))
+            screen.blit(counter_surface, counter_rect)
 
     def draw_bottom_bar(self, screen, game_state):
         # Draw Bottom Bar

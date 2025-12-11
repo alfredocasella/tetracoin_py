@@ -1,0 +1,92 @@
+[
+  {
+    "level": "level_001",
+    "json": "assets/levels/v2/level_001.json",
+    "seed": "N/A",
+    "sol_len": 0,
+    "target": 0,
+    "sol_status": "FAIL",
+    "val_status": "OK"
+  },
+  {
+    "level": "level_002",
+    "json": "assets/levels/v2/level_002.json",
+    "seed": "N/A",
+    "sol_len": 0,
+    "target": 0,
+    "sol_status": "FAIL",
+    "val_status": "OK"
+  },
+  {
+    "level": "level_003",
+    "json": "assets/levels/v2/level_003.json",
+    "seed": "N/A",
+    "sol_len": 0,
+    "target": 0,
+    "sol_status": "FAIL",
+    "val_status": "OK"
+  },
+  {
+    "level": "level_004",
+    "json": "assets/levels/v2/level_004.json",
+    "seed": "N/A",
+    "sol_len": 0,
+    "target": 0,
+    "sol_status": "FAIL",
+    "val_status": "OK"
+  },
+  {
+    "level": "level_005",
+    "json": "assets/levels/v2/level_005.json",
+    "seed": "N/A",
+    "sol_len": 0,
+    "target": 0,
+    "sol_status": "FAIL",
+    "val_status": "OK"
+  },
+  {
+    "level": "level_006",
+    "json": "assets/levels/v2/level_006.json",
+    "seed": "N/A",
+    "sol_len": 0,
+    "target": 0,
+    "sol_status": "FAIL",
+    "val_status": "OK"
+  },
+  {
+    "level": "level_007",
+    "json": "assets/levels/v2/level_007.json",
+    "seed": "N/A",
+    "sol_len": 0,
+    "target": 0,
+    "sol_status": "FAIL",
+    "val_status": "OK"
+  },
+  {
+    "level": "level_008",
+    "json": "assets/levels/v2/level_008.json",
+    "seed": "N/A",
+    "sol_len": 0,
+    "target": 0,
+    "sol_status": "FAIL",
+    "val_status": "OK"
+  },
+  {
+    "level": "level_009",
+    "json": "assets/levels/v2/level_009.json",
+    "seed": "N/A",
+    "sol_len": 0,
+    "target": 0,
+    "sol_status": "FAIL",
+    "val_status": "OK"
+  },
+  {
+    "level": "level_010",
+    "json": "assets/levels/v2/level_010.json",
+    "seed": "N/A",
+    "sol_len": 0,
+    "target": 0,
+    "sol_status": "FAIL",
+    "val_status": "OK"
+  }
+]

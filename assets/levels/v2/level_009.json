@@ -1,0 +1,68 @@
+{
+  "id": "level_009",
+  "grid": {
+    "rows": 8,
+    "cols": 6
+  },
+  "entities": [
+    {
+      "id": "pb_0",
+      "type": "PIGGYBANK",
+      "color": "RED",
+      "row": 7,
+      "col": 2,
+      "is_falling": false,
+      "is_collected": false,
+      "capacity": 5,
+      "current_count": 0
+    },
+    {
+      "id": "pb_1",
+      "type": "PIGGYBANK",
+      "color": "BLUE",
+      "row": 7,
+      "col": 5,
+      "is_falling": false,
+      "is_collected": false,
+      "capacity": 5,
+      "current_count": 0
+    },
+    {
+      "id": "c_0",
+      "type": "COIN",
+      "color": "BLUE",
+      "row": 1,
+      "col": 5,
+      "is_falling": false,
+      "is_collected": false
+    },
+    {
+      "id": "c_1",
+      "type": "COIN",
+      "color": "RED",
+      "row": 1,
+      "col": 2,
+      "is_falling": false,
+      "is_collected": false
+    },
+    {
+      "id": "c_2",
+      "type": "COIN",
+      "color": "RED",
+      "row": 3,
+      "col": 2,
+      "is_falling": false,
+      "is_collected": false
+    },
+    {
+      "id": "fill_2_4",
+      "type": "FIXED_BLOCK",
+      "color": "GRAY",
+      "row": 2,
+      "col": 4,
+      "is_falling": false,
+      "is_collected": false
+    }
+  ],
+  "time_limit": 180
+}

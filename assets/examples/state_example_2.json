@@ -1,0 +1,45 @@
+{
+    "version": "1.0",
+    "meta": {
+        "level_id": 2,
+        "name": "Deflection Test"
+    },
+    "grid": {
+        "rows": 8,
+        "cols": 6
+    },
+    "entities": [
+        {
+            "id": "coin_falling",
+            "type": "COIN",
+            "color": "BLUE",
+            "row": 0,
+            "col": 3
+        },
+        {
+            "id": "obstacle_center",
+            "type": "OBSTACLE",
+            "color": "GRAY",
+            "row": 4,
+            "col": 3
+        },
+        {
+            "id": "piggy_left",
+            "type": "PIGGYBANK",
+            "color": "BLUE",
+            "row": 7,
+            "col": 2,
+            "capacity": 5,
+            "current_count": 0
+        },
+        {
+            "id": "piggy_right",
+            "type": "PIGGYBANK",
+            "color": "BLUE",
+            "row": 7,
+            "col": 4,
+            "capacity": 5,
+            "current_count": 0
+        }
+    ]
+}

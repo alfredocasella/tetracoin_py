@@ -1,4 +1,5 @@
 {
+<<<<<<< HEAD
   "meta": {
     "id": 3,
     "world": 1,
@@ -133,4 +134,140 @@
     ],
     "entrances": []
   }
+=======
+    "meta": {
+        "id": 3,
+        "world": 1,
+        "name": "Coin Spawner",
+        "grid_size": [
+            6,
+            6
+        ],
+        "time_limit": 80,
+        "stars": [
+            8,
+            12,
+            16
+        ],
+        "tutorial_text": "Le monete spawnano dal tubo centrale! Raccogli tutte per svuotare i blocchi."
+    },
+    "layout": [
+        [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+        ],
+        [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+        ],
+        [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+        ],
+        [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+        ],
+        [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+        ],
+        [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+        ]
+    ],
+    "blocks": [
+        {
+            "id": "b_0",
+            "shape": "I2",
+            "color": "BLUE",
+            "counter": 3,
+            "xy": [
+                1,
+                1
+            ]
+        },
+        {
+            "id": "b_1",
+            "shape": "I2",
+            "color": "YELLOW",
+            "counter": 3,
+            "xy": [
+                4,
+                1
+            ]
+        },
+        {
+            "id": "b_2",
+            "shape": "O",
+            "color": "RED",
+            "counter": 2,
+            "xy": [
+                1,
+                4
+            ]
+        }
+    ],
+    "coins": {
+        "static": [
+            {
+                "color": "BLUE",
+                "xy": [
+                    0,
+                    3
+                ]
+            },
+            {
+                "color": "YELLOW",
+                "xy": [
+                    5,
+                    3
+                ]
+            }
+        ],
+        "queues": [
+            {
+                "pos": [
+                    3,
+                    0
+                ],
+                "items": [
+                    "BLUE",
+                    "YELLOW",
+                    "RED",
+                    "BLUE",
+                    "YELLOW",
+                    "RED",
+                    "BLUE",
+                    "YELLOW"
+                ]
+            }
+        ]
+    }
+>>>>>>> 5db67f2eedc748b12f9b4b6c8633d696020195aa
 }
