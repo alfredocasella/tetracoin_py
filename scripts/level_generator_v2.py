@@ -15,13 +15,12 @@ import sys
 import os
 import json
 import random
+from collections import deque
 from typing import Dict, List, Tuple, Optional
 
 # Add project root to path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-from level_solver import solve_level
 
 # Shape definitions
 SHAPE_CELLS = {
@@ -127,7 +126,7 @@ class DifficultyProgression:
 
 
 class LevelValidator:
-    """Valida i livelli generati"""
+    """Valida i livelli generati usando BFS per verificare la risolvibilità"""
     
     def __init__(self):
         pass
@@ -143,9 +142,8 @@ class LevelValidator:
         if not self._validate_structure(level_data):
             return False, "Invalid structure", 0
         
-        # 2. Solvability check
-        max_moves = level_data['meta'].get('stars', [0, 0, 100])[2] + 20
-        is_solvable, solution, num_moves = solve_level(level_data, max_moves=max_moves, verbose=False)
+        # 2. Solvability check using BFS
+        is_solvable, num_moves = self.is_solvable(level_data)
         
         if not is_solvable:
             return False, "Level is not solvable", 0
@@ -176,6 +174,218 @@ class LevelValidator:
             return False
         
         return True
+    
+    def is_solvable(self, level_data: Dict, max_moves: int = 100) -> Tuple[bool, int]:
+        """
+        Verifica se un livello è risolvibile usando BFS
+        
+        Esplora tutti gli stati possibili del gioco fino a trovare uno stato vincente
+        o esaurire le possibilità.
+        
+        Args:
+            level_data: Dati del livello
+            max_moves: Numero massimo di mosse da esplorare
+            
+        Returns:
+            (is_solvable, num_moves): True se risolvibile, numero di mosse necessarie
+        """
+        # Crea stato iniziale
+        initial_state = self._create_game_state(level_data)
+        
+        # Verifica se già vinto (non dovrebbe mai succedere)
+        if self._is_win_state(initial_state):
+            return True, 0
+        
+        # BFS
+        queue = deque([(initial_state, 0)])  # (state, num_moves)
+        visited = set()
+        visited.add(self._state_to_hash(initial_state))
+        
+        states_explored = 0
+        max_states = 10000  # Limite per evitare loop infiniti
+        
+        while queue and states_explored < max_states:
+            current_state, num_moves = queue.popleft()
+            states_explored += 1
+            
+            # Esplora tutte le mosse possibili
+            for next_state in self._get_next_states(current_state, level_data['layout']):
+                state_hash = self._state_to_hash(next_state)
+                
+                if state_hash in visited:
+                    continue
+                
+                visited.add(state_hash)
+                new_num_moves = num_moves + 1
+                
+                # Verifica se troppo lungo
+                if new_num_moves > max_moves:
+                    continue
+                
+                # Verifica condizione di vittoria
+                if self._is_win_state(next_state):
+                    return True, new_num_moves
+                
+                queue.append((next_state, new_num_moves))
+        
+        return False, 0
+    
+    def _create_game_state(self, level_data: Dict) -> Dict:
+        """Crea lo stato iniziale del gioco"""
+        state = {
+            'blocks': {},  # {block_id: {'pos': (x,y), 'shape': str, 'color': str, 'counter': int}}
+            'coins': set(),  # {(x, y, color), ...}
+            'collected': {}  # {color: count}
+        }
+        
+        # Inizializza blocchi
+        for block in level_data['blocks']:
+            block_id = block['id']
+            state['blocks'][block_id] = {
+                'pos': tuple(block['xy']),
+                'shape': block['shape'],
+                'color': block['color'],
+                'counter': block['counter']
+            }
+            # Inizializza contatore monete raccolte
+            if block['color'] not in state['collected']:
+                state['collected'][block['color']] = 0
+        
+        # Inizializza monete
+        for coin in level_data['coins']['static']:
+            state['coins'].add((coin['xy'][0], coin['xy'][1], coin['color']))
+        
+        return state
+    
+    def _state_to_hash(self, state: Dict) -> Tuple:
+        """Converte uno stato in una rappresentazione hashabile"""
+        # Hash basato su: posizioni blocchi + monete rimanenti
+        block_positions = tuple(sorted(
+            (bid, bdata['pos']) for bid, bdata in state['blocks'].items()
+        ))
+        remaining_coins = tuple(sorted(state['coins']))
+        return (block_positions, remaining_coins)
+    
+    def _is_win_state(self, state: Dict) -> bool:
+        """Verifica se lo stato è vincente (tutti i blocchi hanno raccolto le loro monete)"""
+        for block_id, block_data in state['blocks'].items():
+            color = block_data['color']
+            required = block_data['counter']
+            collected = state['collected'].get(color, 0)
+            if collected < required:
+                return False
+        return True
+    
+    def _get_next_states(self, state: Dict, layout: List[List[int]]) -> List[Dict]:
+        """
+        Genera tutti gli stati successivi possibili muovendo ogni blocco in ogni direzione
+        
+        Returns:
+            Lista di nuovi stati
+        """
+        next_states = []
+        directions = [(0, 1), (0, -1), (1, 0), (-1, 0)]  # down, up, right, left
+        
+        grid_h = len(layout)
+        grid_w = len(layout[0]) if grid_h > 0 else 0
+        
+        for block_id in list(state['blocks'].keys()):
+            block = state['blocks'][block_id]
+            
+            for dx, dy in directions:
+                new_pos = (block['pos'][0] + dx, block['pos'][1] + dy)
+                
+                # Verifica se la mossa è valida
+                if self._is_valid_move(state, block_id, new_pos, layout, grid_w, grid_h):
+                    # Crea nuovo stato
+                    new_state = self._apply_move(state, block_id, new_pos)
+                    next_states.append(new_state)
+        
+        return next_states
+    
+    def _is_valid_move(self, state: Dict, block_id: str, new_pos: Tuple[int, int],
+                       layout: List[List[int]], grid_w: int, grid_h: int) -> bool:
+        """Verifica se un blocco può muoversi in una nuova posizione"""
+        block = state['blocks'][block_id]
+        shape = block['shape']
+        shape_cells = SHAPE_CELLS.get(shape, [(0, 0)])
+        
+        # Ottieni celle occupate da altri blocchi
+        other_block_cells = set()
+        for other_id, other_block in state['blocks'].items():
+            if other_id != block_id:
+                other_shape_cells = SHAPE_CELLS.get(other_block['shape'], [(0, 0)])
+                for dx, dy in other_shape_cells:
+                    other_block_cells.add((other_block['pos'][0] + dx, other_block['pos'][1] + dy))
+        
+        # Verifica ogni cella del blocco nella nuova posizione
+        for dx, dy in shape_cells:
+            cell_x = new_pos[0] + dx
+            cell_y = new_pos[1] + dy
+            
+            # Verifica bounds
+            if not (0 <= cell_x < grid_w and 0 <= cell_y < grid_h):
+                return False
+            
+            # Verifica muri
+            if layout[cell_y][cell_x] == 1:
+                return False
+            
+            # Verifica collisione con altri blocchi
+            if (cell_x, cell_y) in other_block_cells:
+                return False
+            
+            # Verifica collisione con monete di colore diverso
+            for coin_x, coin_y, coin_color in state['coins']:
+                if (cell_x, cell_y) == (coin_x, coin_y):
+                    if coin_color != block['color']:
+                        return False  # Moneta di colore diverso blocca il movimento
+        
+        return True
+    
+    def _apply_move(self, state: Dict, block_id: str, new_pos: Tuple[int, int]) -> Dict:
+        """
+        Applica una mossa e crea un nuovo stato
+        
+        Gestisce:
+        - Movimento del blocco
+        - Raccolta monete
+        - Rimozione blocco se ha raccolto tutte le sue monete
+        """
+        # Deep copy dello stato
+        new_state = {
+            'blocks': {bid: bdata.copy() for bid, bdata in state['blocks'].items()},
+            'coins': state['coins'].copy(),
+            'collected': state['collected'].copy()
+        }
+        
+        # Muovi il blocco
+        block = new_state['blocks'][block_id]
+        block['pos'] = new_pos
+        
+        # Raccogli monete
+        shape_cells = SHAPE_CELLS.get(block['shape'], [(0, 0)])
+        coins_to_remove = set()
+        
+        for dx, dy in shape_cells:
+            cell_x = new_pos[0] + dx
+            cell_y = new_pos[1] + dy
+            
+            # Cerca monete in questa cella
+            for coin in new_state['coins']:
+                coin_x, coin_y, coin_color = coin
+                if (cell_x, cell_y) == (coin_x, coin_y) and coin_color == block['color']:
+                    coins_to_remove.add(coin)
+                    new_state['collected'][block['color']] += 1
+        
+        # Rimuovi monete raccolte
+        new_state['coins'] -= coins_to_remove
+        
+        # Rimuovi blocco se ha raccolto tutte le sue monete
+        if new_state['collected'][block['color']] >= block['counter']:
+            del new_state['blocks'][block_id]
+        
+        return new_state
 
 
 class LevelGeneratorV2:

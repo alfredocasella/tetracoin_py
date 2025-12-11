@@ -23,7 +23,6 @@ try:
     from core.sprites import BlockSprite, CoinSprite, SHAPES
     from core.settings import *
     from core.game import Game
-    from data.levels import LEVEL_DATA
 except ImportError as e:
     print(f"❌ Errore importazione moduli: {e}")
     sys.exit(1)

@@ -1,6 +1,5 @@
 import pygame
 from core.settings import *
-from data.levels import LEVEL_DATA
 from core.grid_manager import GridManager
 from core.sprites import BlockSprite, CoinSprite
 from ui.ui import UI
@@ -20,7 +19,6 @@ class Game:
         
         # Level loading system
         self.level_loader = LevelLoader()
-        self.use_json_levels = True  # Toggle to use JSON levels
         
         # Save system
         self.save_system = SaveSystem()
@@ -39,33 +37,19 @@ class Game:
         self.load_level(self.current_level_index)
 
     def load_level(self, level_index):
-        # Load from JSON or Python data
-        if self.use_json_levels:
-            try:
-                self.level_data = self.level_loader.load_level(level_index + 1)
-            except FileNotFoundError:
-                print(f"JSON level {level_index + 1} not found")
-                # Check if we've run out of levels
-                if level_index + 1 > self.level_loader.get_level_count():
-                    # All levels completed, return to menu
-                    self.state = self.STATE_MENU
-                    return
-                # Try Python data as fallback
-                try:
-                    if level_index < len(LEVEL_DATA):
-                        self.level_data = LEVEL_DATA[level_index]
-                    else:
-                        self.state = self.STATE_MENU
-                        return
-                except:
-                    self.state = self.STATE_MENU
-                    return
-        else:
-            if level_index >= len(LEVEL_DATA):
-                # All levels completed
+        # Load from JSON
+        try:
+            self.level_data = self.level_loader.load_level(level_index + 1)
+        except FileNotFoundError:
+            print(f"JSON level {level_index + 1} not found")
+            # Check if we've run out of levels
+            if level_index + 1 > self.level_loader.get_level_count():
+                # All levels completed, return to menu
                 self.state = self.STATE_MENU
                 return
-            self.level_data = LEVEL_DATA[level_index]
+            # If level not found but should exist, return to menu
+            self.state = self.STATE_MENU
+            return
             
         self.grid_manager = GridManager(self.level_data)
         self.grid_manager._game_ref = self  # Store reference for coin collision check

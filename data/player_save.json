@@ -1,0 +1,30 @@
+{
+  "player": {
+    "name": "Player",
+    "total_stars": 3,
+    "tetra_gold": 25,
+    "current_world": 1,
+    "unlocked_levels": 2,
+    "total_moves": 20,
+    "total_time_played": 127.925
+  },
+  "levels": {
+    "1": {
+      "completed": true,
+      "stars": 3,
+      "best_moves": 0,
+      "best_time": 0.0,
+      "attempts": 4
+    }
+  },
+  "settings": {
+    "music_volume": 0.7,
+    "sfx_volume": 0.8,
+    "language": "en"
+  },
+  "power_ups": {
+    "hammer": 0,
+    "magnet": 0,
+    "time_freeze": 0
+  }
+}
